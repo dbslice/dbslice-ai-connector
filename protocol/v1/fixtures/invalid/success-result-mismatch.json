@@ -1,0 +1,12 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.success",
+  "requestId": "req_wrong002",
+  "operation": "getItemById",
+  "ok": true,
+  "result": [
+    {
+      "itemId": "case-001"
+    }
+  ]
+}

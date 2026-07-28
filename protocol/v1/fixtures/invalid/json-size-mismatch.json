@@ -1,0 +1,23 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.success",
+  "requestId": "req_wrong007",
+  "operation": "readExtractPayload",
+  "ok": true,
+  "result": {
+    "kind": "line",
+    "contentType": "application/json",
+    "encoding": "json",
+    "data": {
+      "points": [
+        { "x": 0, "y": 1 },
+        { "x": 1, "y": 2 }
+      ]
+    },
+    "encodedSizeBytes": 41,
+    "fingerprint": {
+      "algorithm": "sha256",
+      "value": "3e4a7cc70947fd43729267590d69931e8e425e65f6e5626f299db9952939814e"
+    }
+  }
+}

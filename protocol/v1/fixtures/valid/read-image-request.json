@@ -1,0 +1,12 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.request",
+  "requestId": "req_image001",
+  "operation": "readExtractPayload",
+  "datasetAlias": "synthetic-study",
+  "args": {
+    "itemId": "case-001",
+    "extractId": "preview",
+    "kind": "image"
+  }
+}

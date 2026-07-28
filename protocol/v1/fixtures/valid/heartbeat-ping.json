@@ -1,0 +1,5 @@
+{
+  "protocolVersion": "1",
+  "messageType": "heartbeat.ping",
+  "heartbeatId": "hb_fixture01"
+}

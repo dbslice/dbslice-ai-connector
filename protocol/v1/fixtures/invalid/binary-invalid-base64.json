@@ -1,0 +1,19 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.success",
+  "requestId": "req_wrong005",
+  "operation": "readExtractPayload",
+  "ok": true,
+  "result": {
+    "kind": "image",
+    "contentType": "image/png",
+    "encoding": "base64",
+    "data": "not base64!",
+    "encodedSizeBytes": 11,
+    "decodedSizeBytes": 5,
+    "fingerprint": {
+      "algorithm": "sha256",
+      "value": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+    }
+  }
+}

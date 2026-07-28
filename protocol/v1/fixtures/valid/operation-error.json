@@ -1,0 +1,15 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.error",
+  "requestId": "req_missing01",
+  "operation": "getItemById",
+  "ok": false,
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Requested item was not found",
+    "retryable": false,
+    "details": {
+      "itemId": "missing-case"
+    }
+  }
+}

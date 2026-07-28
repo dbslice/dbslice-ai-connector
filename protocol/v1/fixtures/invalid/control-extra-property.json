@@ -1,0 +1,6 @@
+{
+  "protocolVersion": "1",
+  "messageType": "heartbeat.ping",
+  "heartbeatId": "hb_fixture01",
+  "connectorId": "must-come-from-session"
+}

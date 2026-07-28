@@ -1,0 +1,10 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.request",
+  "requestId": "req_item0001",
+  "operation": "getItemById",
+  "datasetAlias": "synthetic-study",
+  "args": {
+    "itemId": "case-001"
+  }
+}

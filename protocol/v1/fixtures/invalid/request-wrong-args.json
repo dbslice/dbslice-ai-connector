@@ -1,0 +1,8 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.request",
+  "requestId": "req_wrong001",
+  "operation": "getItemById",
+  "datasetAlias": "synthetic-study",
+  "args": {}
+}

@@ -1,0 +1,14 @@
+{
+  "protocolVersion": "1",
+  "messageType": "dataset.advertise",
+  "datasets": [
+    {
+      "datasetAlias": "synthetic-study",
+      "displayName": "Synthetic latency study",
+      "fingerprint": {
+        "algorithm": "sha256",
+        "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    }
+  ]
+}

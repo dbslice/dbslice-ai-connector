@@ -1,0 +1,19 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.success",
+  "requestId": "req_glb00001",
+  "operation": "readExtractPayload",
+  "ok": true,
+  "result": {
+    "kind": "glb",
+    "contentType": "model/gltf-binary",
+    "encoding": "base64",
+    "data": "aGVsbG8=",
+    "encodedSizeBytes": 8,
+    "decodedSizeBytes": 5,
+    "fingerprint": {
+      "algorithm": "sha256",
+      "value": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+    }
+  }
+}

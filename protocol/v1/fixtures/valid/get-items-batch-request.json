@@ -1,0 +1,10 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.request",
+  "requestId": "req_batch001",
+  "operation": "getItemsBatch",
+  "datasetAlias": "synthetic-study",
+  "args": {
+    "itemIds": ["case-001", "missing-case"]
+  }
+}

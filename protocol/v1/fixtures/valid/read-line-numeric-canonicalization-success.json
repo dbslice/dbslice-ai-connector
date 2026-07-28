@@ -1,0 +1,23 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.success",
+  "requestId": "req_linejcs01",
+  "operation": "readExtractPayload",
+  "ok": true,
+  "result": {
+    "kind": "line",
+    "contentType": "application/json",
+    "encoding": "json",
+    "data": {
+      "points": [
+        { "x": 1.0, "y": 1e-7 },
+        { "x": 1e20, "y": -0.0 }
+      ]
+    },
+    "encodedSizeBytes": 63,
+    "fingerprint": {
+      "algorithm": "sha256",
+      "value": "3cbd09d24db19c69d3508f8ba597f001b77c6ca6d0fcf1620e9ace0858f2c5b5"
+    }
+  }
+}

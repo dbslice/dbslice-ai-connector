@@ -1,0 +1,19 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.success",
+  "requestId": "req_wrong004",
+  "operation": "getDatasetConfig",
+  "ok": true,
+  "result": {
+    "dataset": {
+      "title": "Synthetic latency study"
+    },
+    "metaData": {
+      "path": "/Users/example/private/metaData.json",
+      "config": {
+        "title": "Synthetic latency study"
+      }
+    },
+    "extracts": []
+  }
+}

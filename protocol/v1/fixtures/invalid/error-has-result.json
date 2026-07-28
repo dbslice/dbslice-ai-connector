@@ -1,0 +1,13 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.error",
+  "requestId": "req_wrong003",
+  "operation": "getItems",
+  "ok": false,
+  "error": {
+    "code": "INTERNAL",
+    "message": "Unexpected failure",
+    "retryable": true
+  },
+  "result": []
+}

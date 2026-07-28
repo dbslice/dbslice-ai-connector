@@ -1,0 +1,13 @@
+{
+  "protocolVersion": "1",
+  "schemaFile": "protocol.schema.json",
+  "schemaDraft": "https://json-schema.org/draft/2020-12/schema",
+  "schemaSha256": "9fe610c1900d0de681e1462fbc46b1c6efbfef450d243894142de456d3c94137",
+  "fixturesSha256": "8e1588003cf3082eb403a4437bd2baf7aed352a716958366dc8531715588532f",
+  "fixturesHashAlgorithm": "sorted-relative-path-null-content-null",
+  "framing": "websocket-text-json",
+  "binaryEncoding": "base64",
+  "maxDecodedBinaryBytes": 16777216,
+  "maxEncodedBinaryBytes": 22369624,
+  "maxMessageBytes": 25165824
+}

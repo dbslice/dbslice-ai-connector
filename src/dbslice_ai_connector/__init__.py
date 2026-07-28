@@ -1,0 +1,3 @@
+"""dbsliceAI local connector."""
+
+__version__ = "0.0.0"

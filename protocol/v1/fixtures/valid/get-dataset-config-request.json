@@ -1,0 +1,8 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.request",
+  "requestId": "req_config01",
+  "operation": "getDatasetConfig",
+  "datasetAlias": "synthetic-study",
+  "args": {}
+}

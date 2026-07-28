@@ -1,0 +1,841 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.dbslice.org/connector/v1/protocol.schema.json",
+  "title": "dbsliceAI connector protocol V1 message",
+  "oneOf": [
+    { "$ref": "#/$defs/operationRequest" },
+    { "$ref": "#/$defs/operationSuccess" },
+    { "$ref": "#/$defs/operationError" },
+    { "$ref": "#/$defs/sessionHello" },
+    { "$ref": "#/$defs/sessionAccepted" },
+    { "$ref": "#/$defs/datasetAdvertisement" },
+    { "$ref": "#/$defs/heartbeatPing" },
+    { "$ref": "#/$defs/heartbeatPong" },
+    { "$ref": "#/$defs/operationCancel" },
+    { "$ref": "#/$defs/operationCancelled" }
+  ],
+  "$defs": {
+    "protocolVersion": {
+      "const": "1"
+    },
+    "requestId": {
+      "type": "string",
+      "pattern": "^req_[A-Za-z0-9_-]{8,120}$"
+    },
+    "sessionId": {
+      "type": "string",
+      "pattern": "^cs_[A-Za-z0-9_-]{8,120}$"
+    },
+    "heartbeatId": {
+      "type": "string",
+      "pattern": "^hb_[A-Za-z0-9_-]{8,120}$"
+    },
+    "datasetAlias": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+    },
+    "logicalId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "operation": {
+      "enum": [
+        "getDatasetConfig",
+        "getItems",
+        "getItemById",
+        "getItemsBatch",
+        "readExtractPayload"
+      ]
+    },
+    "jsonValue": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/jsonValue" }
+        },
+        {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+        }
+      ]
+    },
+    "item": {
+      "type": "object",
+      "required": ["itemId"],
+      "properties": {
+        "itemId": { "$ref": "#/$defs/logicalId" }
+      },
+      "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+    },
+    "publicExtract": {
+      "type": "object",
+      "required": ["extractId", "type", "description"],
+      "properties": {
+        "extractId": { "$ref": "#/$defs/logicalId" },
+        "type": {
+          "enum": ["image", "line", "glb"]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "format": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "xLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "yLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "filter": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "settings": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+            }
+          },
+          "additionalProperties": false
+        },
+        "embedding": {
+          "type": "object",
+          "required": ["type", "source"],
+          "properties": {
+            "type": {
+              "enum": ["grid", "cells"]
+            },
+            "source": {
+              "enum": ["file", "computed"]
+            },
+            "method": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "description": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "settings": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+            }
+          },
+          "additionalProperties": false
+        },
+        "render": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "datasetConfig": {
+      "type": "object",
+      "required": ["dataset", "metaData", "extracts"],
+      "properties": {
+        "dataset": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+        },
+        "metaData": {
+          "type": "object",
+          "required": ["config"],
+          "properties": {
+            "config": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+            }
+          },
+          "additionalProperties": false
+        },
+        "extracts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/publicExtract" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "fingerprint": {
+      "type": "object",
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": {
+          "const": "sha256"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "linePoint": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "embeddingCell": {
+      "type": "object",
+      "required": ["index", "avg"],
+      "properties": {
+        "index": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "avg": { "type": "number" },
+        "label": {
+          "type": "string",
+          "maxLength": 512
+        }
+      },
+      "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+    },
+    "binaryExtractPayload": {
+      "type": "object",
+      "required": [
+        "kind",
+        "contentType",
+        "encoding",
+        "data",
+        "encodedSizeBytes",
+        "decodedSizeBytes",
+        "fingerprint"
+      ],
+      "properties": {
+        "kind": {
+          "enum": ["image", "glb"]
+        },
+        "contentType": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "encoding": {
+          "const": "base64"
+        },
+        "data": {
+          "type": "string",
+          "maxLength": 22369624,
+          "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+        },
+        "encodedSizeBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 22369624
+        },
+        "decodedSizeBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16777216
+        },
+        "fingerprint": { "$ref": "#/$defs/fingerprint" }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": { "const": "image" }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "contentType": {
+                "type": "string",
+                "pattern": "^image/[A-Za-z0-9.+-]+$"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": { "const": "glb" }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "contentType": {
+                "type": "string",
+                "const": "model/gltf-binary"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "lineExtractPayload": {
+      "type": "object",
+      "required": [
+        "kind",
+        "contentType",
+        "encoding",
+        "data",
+        "encodedSizeBytes",
+        "fingerprint"
+      ],
+      "properties": {
+        "kind": {
+          "const": "line"
+        },
+        "contentType": {
+          "const": "application/json"
+        },
+        "encoding": {
+          "const": "json"
+        },
+        "data": {
+          "type": "object",
+          "required": ["points"],
+          "properties": {
+            "label": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "points": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/linePoint" }
+            }
+          },
+          "additionalProperties": false
+        },
+        "encodedSizeBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16777216
+        },
+        "fingerprint": { "$ref": "#/$defs/fingerprint" }
+      },
+      "additionalProperties": false
+    },
+    "embeddingExtractPayload": {
+      "type": "object",
+      "required": [
+        "kind",
+        "contentType",
+        "encoding",
+        "data",
+        "encodedSizeBytes",
+        "fingerprint"
+      ],
+      "properties": {
+        "kind": {
+          "const": "embedding"
+        },
+        "contentType": {
+          "const": "application/json"
+        },
+        "encoding": {
+          "const": "json"
+        },
+        "data": {
+          "type": "object",
+          "required": ["type", "shape", "cells"],
+          "properties": {
+            "type": {
+              "enum": ["grid", "cells"]
+            },
+            "shape": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "cells": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/embeddingCell" }
+            }
+          },
+          "additionalProperties": false
+        },
+        "encodedSizeBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16777216
+        },
+        "fingerprint": { "$ref": "#/$defs/fingerprint" }
+      },
+      "additionalProperties": false
+    },
+    "extractPayload": {
+      "oneOf": [
+        { "$ref": "#/$defs/binaryExtractPayload" },
+        { "$ref": "#/$defs/lineExtractPayload" },
+        { "$ref": "#/$defs/embeddingExtractPayload" }
+      ]
+    },
+    "operationRequest": {
+      "type": "object",
+      "required": [
+        "protocolVersion",
+        "messageType",
+        "requestId",
+        "operation",
+        "datasetAlias",
+        "args"
+      ],
+      "properties": {
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "messageType": {
+          "const": "operation.request"
+        },
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "operation": { "$ref": "#/$defs/operation" },
+        "datasetAlias": { "$ref": "#/$defs/datasetAlias" },
+        "args": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation": { "enum": ["getDatasetConfig", "getItems"] }
+            },
+            "required": ["operation"]
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": { "const": "getItemById" }
+            },
+            "required": ["operation"]
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["itemId"],
+                "properties": {
+                  "itemId": { "$ref": "#/$defs/logicalId" }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": { "const": "getItemsBatch" }
+            },
+            "required": ["operation"]
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["itemIds"],
+                "properties": {
+                  "itemIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 1000,
+                    "uniqueItems": true,
+                    "items": { "$ref": "#/$defs/logicalId" }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": { "const": "readExtractPayload" }
+            },
+            "required": ["operation"]
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["itemId", "extractId", "kind"],
+                "properties": {
+                  "itemId": { "$ref": "#/$defs/logicalId" },
+                  "extractId": { "$ref": "#/$defs/logicalId" },
+                  "kind": {
+                    "enum": ["image", "line", "glb", "embedding"]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "operationSuccess": {
+      "type": "object",
+      "required": [
+        "protocolVersion",
+        "messageType",
+        "requestId",
+        "operation",
+        "ok",
+        "result"
+      ],
+      "properties": {
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "messageType": {
+          "const": "operation.success"
+        },
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "operation": { "$ref": "#/$defs/operation" },
+        "ok": {
+          "const": true
+        },
+        "result": true
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation": { "const": "getDatasetConfig" }
+            },
+            "required": ["operation"]
+          },
+          "then": {
+            "properties": {
+              "result": { "$ref": "#/$defs/datasetConfig" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": { "const": "getItems" }
+            },
+            "required": ["operation"]
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/item" }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": { "const": "getItemById" }
+            },
+            "required": ["operation"]
+          },
+          "then": {
+            "properties": {
+              "result": { "$ref": "#/$defs/item" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": { "const": "getItemsBatch" }
+            },
+            "required": ["operation"]
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "type": "object",
+                "required": ["items", "missingItemIds"],
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": { "$ref": "#/$defs/item" }
+                  },
+                  "missingItemIds": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": { "$ref": "#/$defs/logicalId" }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": { "const": "readExtractPayload" }
+            },
+            "required": ["operation"]
+          },
+          "then": {
+            "properties": {
+              "result": { "$ref": "#/$defs/extractPayload" }
+            }
+          }
+        }
+      ]
+    },
+    "operationError": {
+      "type": "object",
+      "required": [
+        "protocolVersion",
+        "messageType",
+        "requestId",
+        "operation",
+        "ok",
+        "error"
+      ],
+      "properties": {
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "messageType": {
+          "const": "operation.error"
+        },
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "operation": { "$ref": "#/$defs/operation" },
+        "ok": {
+          "const": false
+        },
+        "error": {
+          "type": "object",
+          "required": ["code", "message", "retryable"],
+          "properties": {
+            "code": {
+              "enum": [
+                "NOT_FOUND",
+                "UNAVAILABLE",
+                "INVALID_REQUEST",
+                "TOO_LARGE",
+                "STALE_DATASET",
+                "UNAUTHORIZED",
+                "INTERNAL"
+              ]
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "sessionHello": {
+      "type": "object",
+      "required": [
+        "protocolVersion",
+        "messageType",
+        "connectorVersion",
+        "connectorInstanceId",
+        "supportedProtocolVersions",
+        "capabilities"
+      ],
+      "properties": {
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "messageType": {
+          "const": "session.hello"
+        },
+        "connectorVersion": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$"
+        },
+        "connectorInstanceId": {
+          "type": "string",
+          "pattern": "^ci_[A-Za-z0-9_-]{8,120}$"
+        },
+        "supportedProtocolVersions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "dataset.advertise",
+              "heartbeat",
+              "operation.cancel"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "sessionAccepted": {
+      "type": "object",
+      "required": [
+        "protocolVersion",
+        "messageType",
+        "sessionId",
+        "heartbeatIntervalMs",
+        "requestTimeoutMs",
+        "maxInFlightRequests",
+        "maxMessageBytes"
+      ],
+      "properties": {
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "messageType": {
+          "const": "session.accepted"
+        },
+        "sessionId": { "$ref": "#/$defs/sessionId" },
+        "heartbeatIntervalMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 300000
+        },
+        "requestTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 600000
+        },
+        "maxInFlightRequests": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "maxMessageBytes": {
+          "const": 25165824
+        }
+      },
+      "additionalProperties": false
+    },
+    "datasetAdvertisement": {
+      "type": "object",
+      "required": ["protocolVersion", "messageType", "datasets"],
+      "properties": {
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "messageType": {
+          "const": "dataset.advertise"
+        },
+        "datasets": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "required": ["datasetAlias", "displayName"],
+            "properties": {
+              "datasetAlias": { "$ref": "#/$defs/datasetAlias" },
+              "displayName": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "fingerprint": { "$ref": "#/$defs/fingerprint" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "heartbeatPing": {
+      "type": "object",
+      "required": ["protocolVersion", "messageType", "heartbeatId"],
+      "properties": {
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "messageType": {
+          "const": "heartbeat.ping"
+        },
+        "heartbeatId": { "$ref": "#/$defs/heartbeatId" }
+      },
+      "additionalProperties": false
+    },
+    "heartbeatPong": {
+      "type": "object",
+      "required": ["protocolVersion", "messageType", "heartbeatId"],
+      "properties": {
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "messageType": {
+          "const": "heartbeat.pong"
+        },
+        "heartbeatId": { "$ref": "#/$defs/heartbeatId" }
+      },
+      "additionalProperties": false
+    },
+    "operationCancel": {
+      "type": "object",
+      "required": ["protocolVersion", "messageType", "requestId", "reason"],
+      "properties": {
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "messageType": {
+          "const": "operation.cancel"
+        },
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "reason": {
+          "enum": ["client_cancelled", "timeout", "authorization_revoked", "server_shutdown"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "operationCancelled": {
+      "type": "object",
+      "required": ["protocolVersion", "messageType", "requestId", "status"],
+      "properties": {
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "messageType": {
+          "const": "operation.cancelled"
+        },
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "status": {
+          "enum": ["accepted", "not_found", "already_completed"]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

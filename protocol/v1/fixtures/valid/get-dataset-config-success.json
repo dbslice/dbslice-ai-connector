@@ -1,0 +1,51 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.success",
+  "requestId": "req_config01",
+  "operation": "getDatasetConfig",
+  "ok": true,
+  "result": {
+    "dataset": {
+      "title": "Synthetic latency study",
+      "context": {
+        "summary": "Non-confidential connector protocol fixture"
+      }
+    },
+    "metaData": {
+      "config": {
+        "title": "Synthetic latency study",
+        "description": "Metadata fixture"
+      }
+    },
+    "extracts": [
+      {
+        "extractId": "preview",
+        "type": "image",
+        "description": "Synthetic preview",
+        "format": "png",
+        "embedding": {
+          "type": "grid",
+          "source": "file",
+          "description": "One-cell fixture embedding",
+          "settings": {
+            "shape": [1, 1]
+          }
+        }
+      },
+      {
+        "extractId": "profile",
+        "type": "line",
+        "description": "Synthetic profile",
+        "format": "json",
+        "xLabel": "x",
+        "yLabel": "y"
+      },
+      {
+        "extractId": "geometry",
+        "type": "glb",
+        "description": "Synthetic geometry",
+        "format": "glb"
+      }
+    ]
+  }
+}

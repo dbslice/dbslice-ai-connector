@@ -1,0 +1,19 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.success",
+  "requestId": "req_items001",
+  "operation": "getItems",
+  "ok": true,
+  "result": [
+    {
+      "itemId": "case-001",
+      "angle": 12.5,
+      "category": "baseline"
+    },
+    {
+      "itemId": "case-002",
+      "angle": 14,
+      "category": "variant"
+    }
+  ]
+}

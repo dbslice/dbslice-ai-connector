@@ -1,0 +1,9 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.request",
+  "requestId": "req_extra001",
+  "operation": "getItems",
+  "datasetAlias": "synthetic-study",
+  "args": {},
+  "workspaceId": "must-not-cross-wire"
+}

@@ -1,0 +1,12 @@
+{
+  "protocolVersion": "1",
+  "messageType": "session.hello",
+  "connectorVersion": "0.0.0",
+  "connectorInstanceId": "ci_fixture01",
+  "supportedProtocolVersions": ["1"],
+  "capabilities": [
+    "dataset.advertise",
+    "heartbeat",
+    "operation.cancel"
+  ]
+}

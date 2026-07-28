@@ -1,0 +1,6 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.cancel",
+  "requestId": "req_fixture01",
+  "reason": "timeout"
+}

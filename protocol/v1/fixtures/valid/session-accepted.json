@@ -1,0 +1,9 @@
+{
+  "protocolVersion": "1",
+  "messageType": "session.accepted",
+  "sessionId": "cs_fixture01",
+  "heartbeatIntervalMs": 15000,
+  "requestTimeoutMs": 30000,
+  "maxInFlightRequests": 8,
+  "maxMessageBytes": 25165824
+}
