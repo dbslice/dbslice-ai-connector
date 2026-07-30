@@ -6,7 +6,6 @@ import asyncio
 import json
 import random
 import sysconfig
-import time
 from collections import deque
 from contextlib import suppress
 from pathlib import Path
@@ -62,7 +61,6 @@ class ConnectorClient:
         reconnect_initial_ms: int = 100,
         reconnect_max_ms: int = 5000,
         handshake_timeout_ms: int = 5000,
-        operation_delay_ms: int = 0,
         event_sink: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         self.server_url = server_url
@@ -73,7 +71,6 @@ class ConnectorClient:
         self.reconnect_initial_ms = reconnect_initial_ms
         self.reconnect_max_ms = reconnect_max_ms
         self.handshake_timeout_ms = handshake_timeout_ms
-        self.operation_delay_ms = operation_delay_ms
         self.event_sink = event_sink or (lambda _event: None)
         self.stop_event = asyncio.Event()
         self.websocket = None
@@ -222,21 +219,15 @@ class ConnectorClient:
         )
 
     async def _execute_operation(self, request: dict[str, Any]) -> None:
-        started_at = time.perf_counter()
-        provider_ms: float | None = None
         try:
             async with self.semaphore:
-                if self.operation_delay_ms:
-                    await asyncio.sleep(self.operation_delay_ms / 1000)
-                provider_started_at = time.perf_counter()
                 result = await asyncio.to_thread(
                     self.provider.execute,
                     request["datasetAlias"],
                     request["operation"],
                     request["args"],
                 )
-                provider_ms = (time.perf_counter() - provider_started_at) * 1000
-                send_metric = await self._send(
+                await self._send(
                     {
                         "protocolVersion": PROTOCOL_VERSION,
                         "messageType": "operation.success",
@@ -246,55 +237,25 @@ class ConnectorClient:
                         "result": result,
                     }
                 )
-                self._emit_operation_metric(
-                    request,
-                    status="completed",
-                    started_at=started_at,
-                    provider_ms=provider_ms,
-                    send_metric=send_metric,
-                )
         except asyncio.CancelledError:
-            self._emit_operation_metric(
-                request,
-                status="cancelled",
-                started_at=started_at,
-                provider_ms=provider_ms,
-            )
             raise
         except DatasetOperationError as error:
-            send_metric = await self._send_operation_error(request, error)
-            self._emit_operation_metric(
-                request,
-                status="failed",
-                started_at=started_at,
-                provider_ms=provider_ms,
-                send_metric=send_metric,
-                error_code=error.code,
-            )
+            await self._send_operation_error(request, error)
         except Exception:
-            error = DatasetOperationError(
-                "INTERNAL",
-                "Connector failed to complete the dataset operation",
-                retryable=False,
-            )
-            send_metric = await self._send_operation_error(
+            await self._send_operation_error(
                 request,
-                error,
-            )
-            self._emit_operation_metric(
-                request,
-                status="failed",
-                started_at=started_at,
-                provider_ms=provider_ms,
-                send_metric=send_metric,
-                error_code=error.code,
+                DatasetOperationError(
+                    "INTERNAL",
+                    "Connector failed to complete the dataset operation",
+                    retryable=False,
+                ),
             )
 
     async def _send_operation_error(
         self,
         request: dict[str, Any],
         error: DatasetOperationError,
-    ) -> dict[str, float | int]:
+    ) -> None:
         wire_error: dict[str, Any] = {
             "code": error.code,
             "message": str(error),
@@ -302,7 +263,7 @@ class ConnectorClient:
         }
         if error.details is not None:
             wire_error["details"] = error.details
-        return await self._send(
+        await self._send(
             {
                 "protocolVersion": PROTOCOL_VERSION,
                 "messageType": "operation.error",
@@ -354,33 +315,18 @@ class ConnectorClient:
             await asyncio.gather(*tasks, return_exceptions=True)
         self.operation_tasks.clear()
 
-    async def _send(self, message: dict[str, Any]) -> dict[str, float | int]:
-        validation_started_at = time.perf_counter()
+    async def _send(self, message: dict[str, Any]) -> None:
         validate_protocol_message(message, schema=self.schema)
-        protocol_validation_ms = (
-            time.perf_counter() - validation_started_at
-        ) * 1000
         if self.websocket is None:
             raise RuntimeError("Connector WebSocket is not connected")
-        serialization_started_at = time.perf_counter()
         encoded = json.dumps(message, ensure_ascii=False, separators=(",", ":"))
-        encoded_bytes = len(encoded.encode("utf-8"))
-        serialization_ms = (time.perf_counter() - serialization_started_at) * 1000
-        if encoded_bytes > MAX_MESSAGE_BYTES:
+        if len(encoded.encode("utf-8")) > MAX_MESSAGE_BYTES:
             raise DatasetOperationError(
                 "TOO_LARGE",
                 "Connector message exceeds the protocol frame limit",
             )
-        socket_send_started_at = time.perf_counter()
         async with self.send_lock:
             await self.websocket.send(encoded)
-        socket_send_ms = (time.perf_counter() - socket_send_started_at) * 1000
-        return {
-            "protocolValidationMs": round(protocol_validation_ms, 3),
-            "serializationMs": round(serialization_ms, 3),
-            "socketSendMs": round(socket_send_ms, 3),
-            "responseBytes": encoded_bytes,
-        }
 
     async def _receive(self) -> dict[str, Any]:
         if self.websocket is None:
@@ -396,31 +342,3 @@ class ConnectorClient:
 
     def _emit(self, event: str, **details: Any) -> None:
         self.event_sink({"event": event, **details})
-
-    def _emit_operation_metric(
-        self,
-        request: dict[str, Any],
-        *,
-        status: str,
-        started_at: float,
-        provider_ms: float | None,
-        send_metric: dict[str, float | int] | None = None,
-        error_code: str | None = None,
-    ) -> None:
-        metric: dict[str, Any] = {
-            "requestId": request["requestId"],
-            "operation": request["operation"],
-            "datasetAlias": request["datasetAlias"],
-            "status": status,
-            "providerMs": (
-                round(provider_ms, 3) if provider_ms is not None else None
-            ),
-            "durationMs": round(
-                (time.perf_counter() - started_at) * 1000,
-                3,
-            ),
-        }
-        metric.update(send_metric or {})
-        if error_code is not None:
-            metric["errorCode"] = error_code
-        self._emit("operation_metric", **metric)

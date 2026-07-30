@@ -1,4 +1,4 @@
-"""Command-line entry point for the minimal connector latency-spike client."""
+"""Command-line entry point for the dbsliceAI connector."""
 
 from __future__ import annotations
 
@@ -40,12 +40,6 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--reconnect-initial-ms", type=int, default=100)
     parser.add_argument("--reconnect-max-ms", type=int, default=5000)
-    parser.add_argument(
-        "--operation-delay-ms",
-        type=int,
-        default=0,
-        help="Latency-spike harness delay; leave at zero in normal use",
-    )
     return parser
 
 
@@ -58,7 +52,6 @@ async def _run(args: argparse.Namespace) -> None:
         credential=os.environ.get("DBSLICE_CONNECTOR_CREDENTIAL"),
         reconnect_initial_ms=args.reconnect_initial_ms,
         reconnect_max_ms=args.reconnect_max_ms,
-        operation_delay_ms=args.operation_delay_ms,
         event_sink=lambda event: print(
             json.dumps(event, separators=(",", ":")),
             flush=True,

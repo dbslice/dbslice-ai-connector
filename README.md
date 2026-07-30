@@ -3,9 +3,9 @@
 Connect local datasets to a remote dbsliceAI MCP server.
 
 The connector is under initial development. The authoritative versioned wire
-contract is in [`protocol/v1`](protocol/v1/README.md). The preliminary latency
-spike includes the persistent outbound WebSocket transport and the five initial
-dataset operations. Production enrollment and credential handling are not yet
+contract is in [`protocol/v1`](protocol/v1/README.md). The client implements
+the persistent outbound WebSocket transport and the five initial dataset
+operations. Production enrollment and credential handling are not yet
 implemented.
 
 Create a local environment and install the connector:
@@ -18,7 +18,7 @@ python3 -m venv .venv
 Run one configured dataset alias:
 
 ```bash
-export DBSLICE_CONNECTOR_CREDENTIAL='<manually provisioned development secret>'
+export DBSLICE_CONNECTOR_CREDENTIAL='<connector credential>'
 .venv/bin/dbslice-ai-connector \
   --server-url ws://127.0.0.1:3001/connector/v1 \
   --connector-instance-id ci_example001 \
@@ -27,8 +27,8 @@ export DBSLICE_CONNECTOR_CREDENTIAL='<manually provisioned development secret>'
 
 The credential is read from the environment and sent only in the WebSocket
 `Authorization` header. It is never placed in the URL or command-line
-arguments. The manual credential flow exists only for the preliminary latency
-spike and will be replaced by the product enrollment mechanism.
+arguments. The product enrollment mechanism will provision and rotate this
+credential in a later release.
 
 The dataset root uses the existing dbsliceAI filesystem layout: configuration
 at `config/config.json`, with metadata and extract paths resolved relative to
