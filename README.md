@@ -2,10 +2,42 @@
 
 Connect local datasets to a remote dbsliceAI MCP server.
 
-The connector is under initial development. The authoritative versioned wire
-contract is in [`protocol/v1`](protocol/v1/README.md). The client implements
-the persistent outbound WebSocket transport, the five initial dataset
-operations and one-time product enrollment.
+## How it works
+
+```text
+configured dataset directory
+        ↓
+filesystem dataset provider
+        ↓
+outbound authenticated WebSocket
+        ↓
+hosted dbsliceAI tools
+```
+
+The connector runs beside the data and makes only explicitly configured
+dataset roots available. It opens an outbound connection to dbsliceAI; no
+inbound port or public file server is required. dbsliceAI requests a small set
+of metadata and extract operations over that connection. Connector-local file
+paths are never included in the returned dataset data.
+
+The main Python modules are deliberately few:
+
+| Module | Responsibility |
+|---|---|
+| `__main__.py` | Command-line parsing and process startup |
+| `dataset_provider.py` | Reads only from configured dataset directories |
+| `client.py` | WebSocket connection, reconnects and operation dispatch |
+| `enrollment.py` | One-time registration with a dbsliceAI workspace |
+| `credentials.py` | Private credential-file storage and crash-safe rotation |
+| `session_authorization.py` | Exchange a refresh credential for one connection token |
+| `hosted_service_http.py` | Shared HTTP handling for enrollment and authorization |
+| `protocol_validation.py` | Validate protocol messages and payload fingerprints |
+
+The files under [`protocol/v1`](protocol/v1/README.md) describe the messages
+exchanged with dbsliceAI and provide examples used by the tests. They are not
+additional connector services.
+
+## Install and run
 
 Create a local environment and install the connector:
 
@@ -35,10 +67,30 @@ On POSIX systems the directory is mode `0700` and the file is mode `0600`.
 The command refuses to replace an existing credential file. Use
 `--credentials-file` to select an explicit service-owned location.
 
-The refresh credential is not yet accepted for production WebSocket sessions.
-Until short-lived session authorization is implemented, the existing
-development transport can be run with an explicitly supplied development
-credential:
+Run the enrolled connector using the stored identity and one or more explicit
+dataset roots:
+
+```bash
+.venv/bin/dbslice-ai-connector run \
+  --dataset "pilot=Pilot dataset=/absolute/path/to/dataset"
+```
+
+Credential use has four steps:
+
+1. The connector privately prepares its next random refresh credential.
+2. It exchanges the current credential for a one-use, short-lived connection
+   token while sending only the hash of the next credential.
+3. It saves the accepted next credential and uses the connection token to open
+   the WebSocket.
+4. dbsliceAI rejects reuse of an invalidated credential and revokes the
+   connector if the reuse conflicts with the expected rotation.
+
+A small private recovery file makes retrying the same rotation safe when an
+HTTP response is lost. Recovery is limited to five minutes. The credential
+values are never placed in URLs, command-line arguments or logs.
+
+The earlier development transport remains available with an explicitly
+supplied development credential:
 
 ```bash
 export DBSLICE_CONNECTOR_CREDENTIAL='<connector credential>'
@@ -50,14 +102,34 @@ export DBSLICE_CONNECTOR_CREDENTIAL='<connector credential>'
 
 The development credential is read from the environment and sent only in the
 WebSocket `Authorization` header. Secrets are never placed in URLs or
-command-line arguments. Product session-token exchange and refresh-credential
-rotation are the next security boundary.
+command-line arguments. The product path does not accept static development
+credentials.
 
 The dataset root uses the existing dbsliceAI filesystem layout: configuration
 at `config/config.json`, with metadata and extract paths resolved relative to
-that root. Connector-local paths are removed from `getDatasetConfig` responses.
+that root. The complete public format is described in
+[`DATASET_FORMAT.md`](DATASET_FORMAT.md). Connector-local paths are not sent to
+dbsliceAI clients.
 
-Run the protocol conformance fixtures with Python 3.11 or newer:
+## Security boundaries
+
+The connector:
+
+- exposes only dataset roots explicitly supplied by its operator
+- rejects paths that resolve outside those roots
+- keeps persistent credentials in a private file
+- sends credentials only to the enrolled server origin over HTTPS
+- uses short-lived, one-use tokens for WebSocket connections
+- validates protocol messages and bounds payload sizes
+
+The process necessarily has the filesystem permissions of the account running
+it. Run it as a dedicated, minimally privileged user when possible, and grant
+that account read access only to the datasets it should expose. Never include
+real credentials, enrollment tokens or private dataset contents in bug reports.
+
+## Development
+
+Run all connector and protocol tests with Python 3.11 or newer:
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v

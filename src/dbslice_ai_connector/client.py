@@ -9,7 +9,7 @@ import sysconfig
 from collections import deque
 from contextlib import suppress
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable, Protocol
 
 from websockets.asyncio.client import connect
 
@@ -19,6 +19,15 @@ from .protocol_validation import load_protocol_schema, validate_protocol_message
 
 PROTOCOL_VERSION = "1"
 MAX_MESSAGE_BYTES = 24 * 1024 * 1024
+
+
+class ConnectionAuthorization(Protocol):
+    websocket_url: str
+    connector_instance_id: str
+    session_token: str
+
+
+AuthorizationProvider = Callable[[], Awaitable[ConnectionAuthorization]]
 
 
 def _default_schema() -> dict[str, Any]:
@@ -53,20 +62,29 @@ class ConnectorClient:
     def __init__(
         self,
         *,
-        server_url: str,
-        connector_instance_id: str,
         provider: FilesystemDatasetProvider,
+        server_url: str | None = None,
+        connector_instance_id: str | None = None,
         credential: str | None = None,
+        authorization_provider: AuthorizationProvider | None = None,
         schema: dict[str, Any] | None = None,
         reconnect_initial_ms: int = 100,
         reconnect_max_ms: int = 5000,
         handshake_timeout_ms: int = 5000,
         event_sink: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
+        if authorization_provider is None and (
+            not server_url or not connector_instance_id
+        ):
+            raise ValueError(
+                "server_url and connector_instance_id are required without "
+                "an authorization provider"
+            )
         self.server_url = server_url
         self.connector_instance_id = connector_instance_id
         self.provider = provider
         self.credential = credential
+        self.authorization_provider = authorization_provider
         self.schema = schema or _default_schema()
         self.reconnect_initial_ms = reconnect_initial_ms
         self.reconnect_max_ms = reconnect_max_ms
@@ -110,14 +128,23 @@ class ConnectorClient:
         await self._cancel_operations()
 
     async def _run_session(self) -> None:
+        if self.authorization_provider is not None:
+            authorization = await self.authorization_provider()
+            server_url = authorization.websocket_url
+            connector_instance_id = authorization.connector_instance_id
+            credential = authorization.session_token
+        else:
+            server_url = self.server_url
+            connector_instance_id = self.connector_instance_id
+            credential = self.credential
         async with connect(
-            self.server_url,
+            server_url,
             max_size=MAX_MESSAGE_BYTES,
             ping_interval=None,
             compression=None,
             additional_headers=(
-                {"Authorization": f"Bearer {self.credential}"}
-                if self.credential
+                {"Authorization": f"Bearer {credential}"}
+                if credential
                 else None
             ),
         ) as websocket:
@@ -128,7 +155,7 @@ class ConnectorClient:
                         "protocolVersion": PROTOCOL_VERSION,
                         "messageType": "session.hello",
                         "connectorVersion": __version__,
-                        "connectorInstanceId": self.connector_instance_id,
+                        "connectorInstanceId": connector_instance_id,
                         "supportedProtocolVersions": [PROTOCOL_VERSION],
                         "capabilities": [
                             "dataset.advertise",

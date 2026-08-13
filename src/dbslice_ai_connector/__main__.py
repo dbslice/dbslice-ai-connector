@@ -21,6 +21,7 @@ from .credentials import (
 )
 from .dataset_provider import DatasetDefinition, FilesystemDatasetProvider
 from .enrollment import enroll_connector, generate_connector_instance_id
+from .session_authorization import authorize_connector_session_async
 
 
 def _parse_dataset(value: str) -> DatasetDefinition:
@@ -54,8 +55,9 @@ def _parser() -> argparse.ArgumentParser:
     enroll.add_argument("--credentials-file", type=Path)
 
     run = commands.add_parser("run", help="run the persistent connector")
-    run.add_argument("--server-url", required=True)
-    run.add_argument("--connector-instance-id", required=True)
+    run.add_argument("--server-url")
+    run.add_argument("--connector-instance-id")
+    run.add_argument("--credentials-file", type=Path)
     run.add_argument(
         "--dataset",
         action="append",
@@ -130,11 +132,39 @@ def _enroll(
 
 async def _run(args: argparse.Namespace, *, environ: Mapping[str, str]) -> None:
     provider = FilesystemDatasetProvider(args.dataset)
+    development_credential = environ.get("DBSLICE_CONNECTOR_CREDENTIAL")
+    if development_credential:
+        if args.credentials_file:
+            raise ValueError(
+                "--credentials-file cannot be used with "
+                "DBSLICE_CONNECTOR_CREDENTIAL"
+            )
+        if not args.server_url or not args.connector_instance_id:
+            raise ValueError(
+                "--server-url and --connector-instance-id are required with "
+                "DBSLICE_CONNECTOR_CREDENTIAL"
+            )
+        connection = {
+            "server_url": args.server_url,
+            "connector_instance_id": args.connector_instance_id,
+            "credential": development_credential,
+        }
+    else:
+        if args.server_url or args.connector_instance_id:
+            raise ValueError(
+                "product connector identity comes from --credentials-file; "
+                "do not supply --server-url or --connector-instance-id"
+            )
+        credentials_path = args.credentials_file or default_credentials_path(environ)
+        connection = {
+            "authorization_provider": lambda: authorize_connector_session_async(
+                credentials_path
+            )
+        }
+
     client = ConnectorClient(
-        server_url=args.server_url,
-        connector_instance_id=args.connector_instance_id,
         provider=provider,
-        credential=environ.get("DBSLICE_CONNECTOR_CREDENTIAL"),
+        **connection,
         reconnect_initial_ms=args.reconnect_initial_ms,
         reconnect_max_ms=args.reconnect_max_ms,
         event_sink=lambda event: print(

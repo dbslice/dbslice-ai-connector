@@ -31,7 +31,7 @@ class FilesystemDatasetProviderTest(unittest.TestCase):
         config = {
             "dataset": {"title": "Synthetic latency study"},
             "metaData": {
-                "path": "data/items.json",
+                "path": "data/metadata/items.json",
                 "config": {
                     "title": "Synthetic latency study",
                     "description": "Transport fixture",
@@ -43,10 +43,10 @@ class FilesystemDatasetProviderTest(unittest.TestCase):
                     "type": "image",
                     "description": "Synthetic preview",
                     "format": "png",
-                    "path": "images/${itemId}.png",
+                    "path": "data/extracts/preview/${itemId}.png",
                     "embedding": {
                         "type": "grid",
-                        "path": "embeddings/${itemId}.json",
+                        "path": "data/extracts/preview/${itemId}_embedding.json",
                         "description": "Synthetic embedding",
                         "settings": {"shape": [1, 1]},
                     },
@@ -56,14 +56,14 @@ class FilesystemDatasetProviderTest(unittest.TestCase):
                     "type": "line",
                     "description": "Synthetic profile",
                     "format": "json",
-                    "path": "lines/${itemId}.json",
+                    "path": "data/extracts/profile/${itemId}.json",
                 },
                 {
                     "extractId": "geometry",
                     "type": "glb",
                     "description": "Synthetic geometry",
                     "format": "glb",
-                    "path": "geometry/${itemId}.glb",
+                    "path": "data/extracts/geometry/${itemId}.glb",
                 },
             ],
         }
@@ -72,25 +72,28 @@ class FilesystemDatasetProviderTest(unittest.TestCase):
             {"itemId": "case-002", "angle": 14},
         ]
         write_json(root / "config" / "config.json", config)
-        write_json(root / "data" / "items.json", {"items": self.items})
+        write_json(root / "data" / "metadata" / "items.json", {"items": self.items})
         write_json(
-            root / "lines" / "case-001.json",
+            root / "data" / "extracts" / "profile" / "case-001.json",
             {
                 "label": "Synthetic profile",
                 "data": [{"x": 0, "y": 1}, {"x": 1, "y": 2}],
             },
         )
         write_json(
-            root / "embeddings" / "case-001.json",
+            root / "data" / "extracts" / "preview" / "case-001_embedding.json",
             {
                 "shape": [1, 1],
                 "cells": [{"index": [0, 0], "avg": 0.5}],
             },
         )
-        (root / "images").mkdir()
-        (root / "images" / "case-001.png").write_bytes(b"image")
-        (root / "geometry").mkdir()
-        (root / "geometry" / "case-001.glb").write_bytes(b"glb")
+        (root / "data" / "extracts" / "preview" / "case-001.png").write_bytes(
+            b"image"
+        )
+        (root / "data" / "extracts" / "geometry").mkdir(parents=True)
+        (root / "data" / "extracts" / "geometry" / "case-001.glb").write_bytes(
+            b"glb"
+        )
 
         self.provider = FilesystemDatasetProvider(
             [
