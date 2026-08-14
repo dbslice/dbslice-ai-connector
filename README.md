@@ -107,9 +107,29 @@ credentials.
 
 The dataset root uses the existing dbsliceAI filesystem layout: configuration
 at `config/config.json`, with metadata and extract paths resolved relative to
-that root. The complete public format is described in
-[`DATASET_FORMAT.md`](DATASET_FORMAT.md). Connector-local paths are not sent to
-dbsliceAI clients.
+that root. The complete public format is described in the
+[canonical dataset specification](https://github.com/dbslice/dbslice-ai-sample-data/blob/main/DATASET_FORMAT.md).
+Connector-local paths are not sent to dbsliceAI clients.
+
+For a production-shaped first connection check, download and verify the
+versioned axial compressor sample. GitHub access is required while the sample
+repository is private:
+
+```bash
+gh release download v1.0.0 \
+  --repo dbslice/dbslice-ai-sample-data \
+  --pattern 'dbslice-ai-sample-data-1.0.0*' \
+  --pattern 'SHA256SUMS'
+shasum -a 256 -c SHA256SUMS
+unzip dbslice-ai-sample-data-1.0.0.zip
+```
+
+Then register the extracted dataset root:
+
+```bash
+dbslice-ai-connector run \
+  --dataset "axial-compressor-sample=Axial compressor sample=/absolute/path/to/dbslice-ai-sample-data-1.0.0"
+```
 
 ## Security boundaries
 
