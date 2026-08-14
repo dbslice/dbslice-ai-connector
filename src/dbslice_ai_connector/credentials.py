@@ -150,13 +150,20 @@ def _credentials_payload(credentials: ConnectorCredentials) -> dict[str, object]
     }
 
 
-def write_new_credentials(path: Path, credentials: ConnectorCredentials) -> None:
-    """Atomically create a private credential file without replacing one."""
+def prepare_new_credentials_path(path: Path) -> Path:
+    """Validate and prepare a private destination before remote enrollment."""
 
     path = path.expanduser()
     if credentials_file_exists(path):
         raise CredentialFileExistsError(f"Credential file already exists: {path}")
+    _assert_private_parent(path, create=True)
+    return path
 
+
+def write_new_credentials(path: Path, credentials: ConnectorCredentials) -> None:
+    """Atomically create a private credential file without replacing one."""
+
+    path = prepare_new_credentials_path(path)
     _create_private_json(path, _credentials_payload(credentials))
 
 

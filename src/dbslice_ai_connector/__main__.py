@@ -8,15 +8,17 @@ import getpass
 import json
 import os
 import signal
+import ssl
 import sys
 from pathlib import Path
 from typing import Callable, Mapping, Sequence, TextIO
+from urllib.error import URLError
 
 from .client import ConnectorClient
 from .credentials import (
     ConnectorCredentials,
     default_credentials_path,
-    credentials_file_exists,
+    prepare_new_credentials_path,
     write_new_credentials,
 )
 from .dataset_provider import DatasetDefinition, FilesystemDatasetProvider
@@ -96,11 +98,9 @@ def _enroll(
     stdout: TextIO,
     secret_reader: Callable[[str], str],
 ) -> None:
-    credential_path = args.credentials_file or default_credentials_path(environ)
-    if credentials_file_exists(credential_path):
-        raise RuntimeError(
-            f"Credential file already exists; refusing to replace it: {credential_path}"
-        )
+    credential_path = prepare_new_credentials_path(
+        args.credentials_file or default_credentials_path(environ)
+    )
     instance_id = args.connector_instance_id or generate_connector_instance_id()
     result = enroll_connector(
         server_url=args.server_url,
@@ -201,5 +201,43 @@ def main(
     asyncio.run(_run(args, environ=environ))
 
 
+def cli(
+    argv: Sequence[str] | None = None,
+    *,
+    environ: Mapping[str, str] = os.environ,
+    stdout: TextIO = sys.stdout,
+    stderr: TextIO = sys.stderr,
+    secret_reader: Callable[[str], str] = getpass.getpass,
+) -> int:
+    """Run the command with concise, actionable operator-facing failures."""
+
+    try:
+        main(
+            argv,
+            environ=environ,
+            stdout=stdout,
+            secret_reader=secret_reader,
+        )
+    except URLError as error:
+        reason = error.reason
+        if (
+            isinstance(reason, ssl.SSLCertVerificationError)
+            or "CERTIFICATE_VERIFY_FAILED" in str(reason)
+        ):
+            stderr.write(
+                "Could not verify the server TLS certificate.\n"
+                "If you installed Python from python.org on macOS, run its "
+                "bundled Install Certificates.command, then retry.\n"
+                "Certificate verification was not disabled.\n"
+            )
+        else:
+            stderr.write(f"Could not connect to the hosted service: {reason}\n")
+        return 1
+    except (PermissionError, RuntimeError, ValueError) as error:
+        stderr.write(f"Error: {error}\n")
+        return 1
+    return 0
+
+
 if __name__ == "__main__":
-    main()
+    raise SystemExit(cli())

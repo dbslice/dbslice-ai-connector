@@ -46,6 +46,13 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -e .
 ```
 
+The connector uses Python's standard verified TLS configuration. If a
+Python.org macOS installation reports `CERTIFICATE_VERIFY_FAILED`, run the
+`Install Certificates.command` supplied with that Python installation. As a
+temporary diagnostic workaround, point `SSL_CERT_FILE` at an existing trusted
+certificate-authority (CA) bundle such as `/etc/ssl/cert.pem`. Do not disable
+certificate verification.
+
 Enroll one connector installation using the short-lived token supplied by a
 dbsliceAI workspace administrator:
 

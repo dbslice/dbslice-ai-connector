@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import ssl
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from urllib.error import URLError
 
-from dbslice_ai_connector.__main__ import main
+from dbslice_ai_connector.__main__ import cli, main
 from dbslice_ai_connector.credentials import read_credentials
 from dbslice_ai_connector.enrollment import (
     ConnectorEnrollmentError,
@@ -151,6 +154,49 @@ class ConnectorEnrollmentTest(unittest.TestCase):
                             "https://app.ai.dbslice.org",
                             "--credentials-file",
                             str(path),
+                        ],
+                        environ={"DBSLICE_CONNECTOR_ENROLLMENT_TOKEN": "secret"},
+                        stdout=io.StringIO(),
+                        secret_reader=lambda _prompt: self.fail("unexpected prompt"),
+                    )
+            enroll.assert_not_called()
+
+    def test_installed_cli_explains_missing_certificate_authority(self) -> None:
+        stderr = io.StringIO()
+        tls_error = ssl.SSLCertVerificationError(
+            1,
+            "certificate verify failed: unable to get local issuer certificate",
+        )
+        with patch(
+            "dbslice_ai_connector.__main__.main",
+            side_effect=URLError(tls_error),
+        ):
+            result = cli([], stderr=stderr)
+
+        self.assertEqual(result, 1)
+        self.assertIn("Could not verify the server TLS certificate", stderr.getvalue())
+        self.assertIn("Install Certificates.command", stderr.getvalue())
+        self.assertIn("was not disabled", stderr.getvalue())
+        self.assertNotIn("Traceback", stderr.getvalue())
+
+    @unittest.skipUnless(os.name == "posix", "POSIX symlink check")
+    def test_cli_rejects_symlinked_directory_before_consuming_enrollment(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            private = root / "private"
+            private.mkdir(mode=0o700)
+            linked = root / "linked"
+            linked.symlink_to(private, target_is_directory=True)
+
+            with patch("dbslice_ai_connector.__main__.enroll_connector") as enroll:
+                with self.assertRaises(PermissionError):
+                    main(
+                        [
+                            "enroll",
+                            "--server-url",
+                            "https://app.ai.dbslice.org",
+                            "--credentials-file",
+                            str(linked / "credentials.json"),
                         ],
                         environ={"DBSLICE_CONNECTOR_ENROLLMENT_TOKEN": "secret"},
                         stdout=io.StringIO(),

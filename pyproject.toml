@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-dbslice-ai-connector = "dbslice_ai_connector.__main__:main"
+dbslice-ai-connector = "dbslice_ai_connector.__main__:cli"
 
 [tool.setuptools.data-files]
 "share/dbslice-ai-connector/protocol/v1" = [
