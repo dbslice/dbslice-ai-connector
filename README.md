@@ -2,10 +2,21 @@
 
 Make a dataset on your computer available in dbsliceAI.
 
+[Website](https://ai.dbslice.org/)
+
 The connector reads only the dataset directory you select and makes an
 outbound connection to dbsliceAI. You do not need to open an inbound port or
 run a public file server, and local file paths are not shared with dbsliceAI
 clients.
+
+## Before you begin
+
+New users must first be invited by the administrator of the hosted dbsliceAI
+service they will use. The administrator supplies the invitation and the
+service URL. Accept the invitation before following the steps below.
+
+After your account is ready, you pair each computer yourself. The administrator
+does not need to create a connector or send you a connector-specific secret.
 
 ## Install
 

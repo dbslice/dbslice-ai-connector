@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/dbslice/dbslice-ai-connector"
+Homepage = "https://ai.dbslice.org/"
 Repository = "https://github.com/dbslice/dbslice-ai-connector"
 Issues = "https://github.com/dbslice/dbslice-ai-connector/issues"
 
