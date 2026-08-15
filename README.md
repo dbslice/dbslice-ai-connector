@@ -27,7 +27,7 @@ The main Python modules are deliberately few:
 | `__main__.py` | Command-line parsing and process startup |
 | `dataset_provider.py` | Reads only from configured dataset directories |
 | `client.py` | WebSocket connection, reconnects and operation dispatch |
-| `enrollment.py` | One-time registration with a dbsliceAI workspace |
+| `enrollment.py` | One-time registration of this installation to a dbsliceAI user account |
 | `credentials.py` | Private credential-file storage and crash-safe rotation |
 | `session_authorization.py` | Exchange a refresh credential for one connection token |
 | `hosted_service_http.py` | Shared HTTP handling for enrollment and authorization |
@@ -53,8 +53,9 @@ temporary diagnostic workaround, point `SSL_CERT_FILE` at an existing trusted
 certificate-authority (CA) bundle such as `/etc/ssl/cert.pem`. Do not disable
 certificate verification.
 
-Enroll one connector installation using the short-lived token supplied by a
-dbsliceAI workspace administrator:
+Enroll one connector installation using the short-lived token created for
+your dbsliceAI user account. Set `--server-url` to the base URL supplied by
+your dbsliceAI service. For example:
 
 ```bash
 .venv/bin/dbslice-ai-connector enroll \
@@ -73,6 +74,8 @@ refresh credential to:
 On POSIX systems the directory is mode `0700` and the file is mode `0600`.
 The command refuses to replace an existing credential file. Use
 `--credentials-file` to select an explicit service-owned location.
+Each enrolled installation has its own connector ID and credentials. Datasets
+advertised by that installation are visible only to the user who owns it.
 
 Run the enrolled connector using the stored identity and one or more explicit
 dataset roots:

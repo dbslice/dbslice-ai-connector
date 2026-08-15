@@ -5,5 +5,5 @@
   "operation": "getItems",
   "datasetAlias": "synthetic-study",
   "args": {},
-  "workspaceId": "must-not-cross-wire"
+  "userId": "must-not-cross-wire"
 }

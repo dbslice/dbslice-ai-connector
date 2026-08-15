@@ -26,8 +26,8 @@ This directory is the authoritative connector wire contract.
 - heartbeat ping/pong
 - operation cancellation and cancellation results
 
-The authenticated WebSocket supplies connector and workspace identity.
-Messages cannot override either identity.
+The authenticated WebSocket supplies the connector identity. User ownership
+is resolved by the hosted service and never crosses the wire in messages.
 
 Operation cancellation is best effort. An accepted cancellation means that
 the connector will not deliberately continue the operation, but the server

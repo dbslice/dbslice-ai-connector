@@ -3,7 +3,7 @@
   "schemaFile": "protocol.schema.json",
   "schemaDraft": "https://json-schema.org/draft/2020-12/schema",
   "schemaSha256": "9fe610c1900d0de681e1462fbc46b1c6efbfef450d243894142de456d3c94137",
-  "fixturesSha256": "8e1588003cf3082eb403a4437bd2baf7aed352a716958366dc8531715588532f",
+  "fixturesSha256": "f5dd7115bbece77398239cb69d9a932b0863cb81fd9cb41446d594454569561f",
   "fixturesHashAlgorithm": "sorted-relative-path-null-content-null",
   "framing": "websocket-text-json",
   "binaryEncoding": "base64",
