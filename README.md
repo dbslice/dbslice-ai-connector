@@ -1,166 +1,78 @@
-# dbslice-ai-connector
+# dbsliceAI connector
 
-Connect local datasets to a remote dbsliceAI MCP server.
+Make a dataset on your computer available in dbsliceAI.
 
-## How it works
+The connector reads only the dataset directory you select and makes an
+outbound connection to dbsliceAI. You do not need to open an inbound port or
+run a public file server, and local file paths are not shared with dbsliceAI
+clients.
 
-```text
-configured dataset directory
-        ↓
-filesystem dataset provider
-        ↓
-outbound authenticated WebSocket
-        ↓
-hosted dbsliceAI tools
-```
+## Install
 
-The connector runs beside the data and makes only explicitly configured
-dataset roots available. It opens an outbound connection to dbsliceAI; no
-inbound port or public file server is required. dbsliceAI requests a small set
-of metadata and extract operations over that connection. Connector-local file
-paths are never included in the returned dataset data.
-
-The main Python modules are deliberately few:
-
-| Module | Responsibility |
-|---|---|
-| `__main__.py` | Command-line parsing and process startup |
-| `dataset_provider.py` | Reads only from configured dataset directories |
-| `client.py` | WebSocket connection, reconnects and operation dispatch |
-| `enrollment.py` | One-time registration of this installation to a dbsliceAI user account |
-| `credentials.py` | Private credential-file storage and crash-safe rotation |
-| `session_authorization.py` | Exchange a refresh credential for one connection token |
-| `hosted_service_http.py` | Shared HTTP handling for enrollment and authorization |
-| `protocol_validation.py` | Validate protocol messages and payload fingerprints |
-
-The files under [`protocol/v1`](protocol/v1/README.md) describe the messages
-exchanged with dbsliceAI and provide examples used by the tests. They are not
-additional connector services.
-
-## Install and run
-
-Create a local environment and install the connector:
+The connector requires Python 3.11 or newer. Install it from PyPI:
 
 ```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -e .
+python3 -m pip install dbslice-ai-connector
 ```
 
-The connector uses Python's standard verified TLS configuration. If a
-Python.org macOS installation reports `CERTIFICATE_VERIFY_FAILED`, run the
-`Install Certificates.command` supplied with that Python installation. As a
-temporary diagnostic workaround, point `SSL_CERT_FILE` at an existing trusted
-certificate-authority (CA) bundle such as `/etc/ssl/cert.pem`. Do not disable
-certificate verification.
+## Connect this computer
 
-Enroll one connector installation using the short-lived token created for
-your dbsliceAI user account. Set `--server-url` to the base URL supplied by
-your dbsliceAI service. For example:
+Pair the connector with your dbsliceAI account. Use the service URL supplied
+by your dbsliceAI provider. For example:
 
 ```bash
-.venv/bin/dbslice-ai-connector enroll \
-  --server-url https://app.ai.dbslice.org
+dbslice-ai-connector pair --server-url https://app.ai.dbslice.org
 ```
 
-The command reads the enrollment token from
-`DBSLICE_CONNECTOR_ENROLLMENT_TOKEN`, or prompts without echoing when that
-variable is absent. It generates the installation ID and writes the returned
-refresh credential to:
+The command opens a secure page in your browser. Sign in and select
+**Connect device**. If the browser is on another computer, add
+`--no-open-browser` and open the printed URL there.
 
-```text
-~/.config/dbslice-ai-connector/credentials.json
-```
+Pairing is required only once on each computer.
 
-On POSIX systems the directory is mode `0700` and the file is mode `0600`.
-The command refuses to replace an existing credential file. Use
-`--credentials-file` to select an explicit service-owned location.
-Each enrolled installation has its own connector ID and credentials. Datasets
-advertised by that installation are visible only to the user who owns it.
+## Download the sample dataset
 
-Run the enrolled connector using the stored identity and one or more explicit
-dataset roots:
+To try the connector with the dbsliceAI sample dataset:
 
 ```bash
-.venv/bin/dbslice-ai-connector run \
-  --dataset "pilot=Pilot dataset=/absolute/path/to/dataset"
+dbslice-ai-connector download-sample --destination ~/datasets
 ```
 
-Credential use has four steps:
+The connector downloads the sample, verifies it and prints its full path and
+the command to use next. It will not replace an existing copy.
 
-1. The connector privately prepares its next random refresh credential.
-2. It exchanges the current credential for a one-use, short-lived connection
-   token while sending only the hash of the next credential.
-3. It saves the accepted next credential and uses the connection token to open
-   the WebSocket.
-4. dbsliceAI rejects reuse of an invalidated credential and revokes the
-   connector if the reuse conflicts with the expected rotation.
-
-A small private recovery file makes retrying the same rotation safe when an
-HTTP response is lost. Recovery is limited to five minutes. The credential
-values are never placed in URLs, command-line arguments or logs.
-
-The earlier development transport remains available with an explicitly
-supplied development credential:
-
-```bash
-export DBSLICE_CONNECTOR_CREDENTIAL='<connector credential>'
-.venv/bin/dbslice-ai-connector run \
-  --server-url ws://127.0.0.1:3001/connector/v1 \
-  --connector-instance-id ci_example001 \
-  --dataset "synthetic-study=Synthetic latency study=/absolute/path/to/dataset"
-```
-
-The development credential is read from the environment and sent only in the
-WebSocket `Authorization` header. Secrets are never placed in URLs or
-command-line arguments. The product path does not accept static development
-credentials.
-
-The dataset root uses the existing dbsliceAI filesystem layout: configuration
-at `config/config.json`, with metadata and extract paths resolved relative to
-that root. The complete public format is described in the
-[canonical dataset specification](https://github.com/dbslice/dbslice-ai-sample-data/blob/main/DATASET_FORMAT.md).
-Connector-local paths are not sent to dbsliceAI clients.
-
-For a production-shaped first connection check, download and verify the
-versioned axial compressor sample. GitHub access is required while the sample
-repository is private:
-
-```bash
-gh release download v1.0.0 \
-  --repo dbslice/dbslice-ai-sample-data \
-  --pattern 'dbslice-ai-sample-data-1.0.0*' \
-  --pattern 'SHA256SUMS'
-shasum -a 256 -c SHA256SUMS
-unzip dbslice-ai-sample-data-1.0.0.zip
-```
-
-Then register the extracted dataset root:
+Connect the downloaded dataset in exactly the same way as any other dataset:
 
 ```bash
 dbslice-ai-connector run \
-  --dataset "axial-compressor-sample=Axial compressor sample=/absolute/path/to/dbslice-ai-sample-data-1.0.0"
+  --dataset ~/datasets/dbslice-ai-sample-data-1.0.0
 ```
 
-## Security boundaries
+Leave the connector running while you use the dataset in dbsliceAI. Stop it
+with **Ctrl-C**.
 
-The connector:
+## Connect your own dataset
 
-- exposes only dataset roots explicitly supplied by its operator
-- rejects paths that resolve outside those roots
-- keeps persistent credentials in a private file
-- sends credentials only to the enrolled server origin over HTTPS
-- uses short-lived, one-use tokens for WebSocket connections
-- validates protocol messages and bounds payload sizes
-
-The process necessarily has the filesystem permissions of the account running
-it. Run it as a dedicated, minimally privileged user when possible, and grant
-that account read access only to the datasets it should expose. Never include
-real credentials, enrollment tokens or private dataset contents in bug reports.
-
-## Development
-
-Run all connector and protocol tests with Python 3.11 or newer:
+Supply the directory containing the dataset's `config/config.json` file:
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+dbslice-ai-connector run --dataset /absolute/path/to/dataset
 ```
+
+The dataset title is read from its configuration. The connector automatically
+reconnects after temporary network interruptions.
+
+The complete directory format is described in the
+[dbsliceAI dataset specification](https://github.com/dbslice/dbslice-ai-sample-data/blob/main/DATASET_FORMAT.md).
+
+## Troubleshooting
+
+If a Python.org installation on macOS reports `CERTIFICATE_VERIFY_FAILED`, run
+the `Install Certificates.command` supplied with that Python installation,
+then try again. Do not disable certificate verification.
+
+Use `dbslice-ai-connector --help` or
+`dbslice-ai-connector <command> --help` to see all available options.
+
+The connector stores its paired identity privately on the computer. Do not
+include credentials, pairing codes or private dataset contents in bug reports.

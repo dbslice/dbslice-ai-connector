@@ -6,6 +6,8 @@ import base64
 import hashlib
 import json
 import math
+import re
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -13,6 +15,7 @@ from typing import Any
 import rfc8785
 
 MAX_DECODED_PAYLOAD_BYTES = 16 * 1024 * 1024
+DATASET_ALIAS_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 
 
 class DatasetOperationError(RuntimeError):
@@ -41,9 +44,63 @@ class DatasetDefinition:
     display_name: str
 
     def __post_init__(self) -> None:
-        if not self.alias:
-            raise ValueError("dataset alias must not be empty")
-        object.__setattr__(self, "root", self.root.resolve())
+        if not DATASET_ALIAS_PATTERN.fullmatch(self.alias):
+            raise ValueError(
+                "dataset ID must start with a letter or number and contain at "
+                "most 80 letters, numbers, dots, underscores or hyphens"
+            )
+        if not self.display_name.strip():
+            raise ValueError("dataset display name must not be empty")
+        object.__setattr__(self, "display_name", self.display_name.strip())
+        object.__setattr__(self, "root", self.root.expanduser().resolve())
+
+
+def _slug(value: str) -> str:
+    ascii_value = (
+        unicodedata.normalize("NFKD", value)
+        .encode("ascii", "ignore")
+        .decode("ascii")
+        .lower()
+    )
+    return re.sub(r"[^a-z0-9]+", "-", ascii_value).strip("-")[:80]
+
+
+def dataset_definition_from_root(
+    root: Path,
+    *,
+    dataset_id: str | None = None,
+) -> DatasetDefinition:
+    """Read a dataset's public identity from its configuration."""
+
+    resolved_root = root.expanduser().resolve()
+    config_path = resolved_root / "config" / "config.json"
+    try:
+        with config_path.open("r", encoding="utf-8") as handle:
+            config = json.load(handle)
+    except FileNotFoundError as error:
+        raise ValueError(
+            f"dataset does not contain config/config.json: {resolved_root}"
+        ) from error
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"could not read dataset configuration: {error}") from error
+
+    dataset = config.get("dataset") if isinstance(config, dict) else None
+    title = dataset.get("title") if isinstance(dataset, dict) else None
+    if not isinstance(title, str) or not title.strip():
+        metadata = config.get("metaData") if isinstance(config, dict) else None
+        metadata_config = metadata.get("config") if isinstance(metadata, dict) else None
+        title = (
+            metadata_config.get("title")
+            if isinstance(metadata_config, dict)
+            else None
+        )
+    if not isinstance(title, str) or not title.strip():
+        title = resolved_root.name
+
+    alias = dataset_id or _slug(title)
+    if not alias:
+        alias = "dataset"
+    return DatasetDefinition(alias=alias, display_name=title, root=resolved_root)
 
 
 def _canonical_json_bytes(value: Any) -> bytes:

@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import getpass
 import json
 import os
+import shlex
 import signal
+import socket
 import ssl
 import sys
+import webbrowser
 from pathlib import Path
 from typing import Callable, Mapping, Sequence, TextIO
 from urllib.error import URLError
@@ -21,40 +23,50 @@ from .credentials import (
     prepare_new_credentials_path,
     write_new_credentials,
 )
-from .dataset_provider import DatasetDefinition, FilesystemDatasetProvider
-from .enrollment import enroll_connector, generate_connector_instance_id
+from .dataset_provider import (
+    FilesystemDatasetProvider,
+    dataset_definition_from_root,
+)
+from .pairing import (
+    generate_connector_instance_id,
+    start_pairing,
+    wait_for_pairing,
+)
 from .session_authorization import authorize_connector_session_async
-
-
-def _parse_dataset(value: str) -> DatasetDefinition:
-    try:
-        alias, display_name, root = value.split("=", 2)
-    except ValueError as error:
-        raise argparse.ArgumentTypeError(
-            "dataset must use ALIAS=DISPLAY_NAME=PATH"
-        ) from error
-    return DatasetDefinition(
-        alias=alias,
-        display_name=display_name,
-        root=Path(root),
-    )
+from .sample_data import download_sample
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
 
-    enroll = commands.add_parser(
-        "enroll",
-        help="consume a one-time product enrollment",
+    pair = commands.add_parser(
+        "pair",
+        help="connect this installation through browser sign-in",
     )
-    enroll.add_argument(
+    pair.add_argument(
         "--server-url",
         required=True,
         help="hosted product origin, for example https://app.ai.dbslice.org",
     )
-    enroll.add_argument("--connector-instance-id")
-    enroll.add_argument("--credentials-file", type=Path)
+    pair.add_argument("--name", default=socket.gethostname())
+    pair.add_argument("--connector-instance-id")
+    pair.add_argument("--credentials-file", type=Path)
+    pair.add_argument("--no-open-browser", action="store_true")
+
+    sample = commands.add_parser(
+        "download-sample",
+        help="download and verify the dbsliceAI sample dataset",
+    )
+    sample.add_argument(
+        "--destination",
+        type=Path,
+        default=Path.cwd(),
+        help=(
+            "directory in which to create the sample dataset "
+            "(default: current directory)"
+        ),
+    )
 
     run = commands.add_parser("run", help="run the persistent connector")
     run.add_argument("--server-url")
@@ -62,10 +74,13 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--credentials-file", type=Path)
     run.add_argument(
         "--dataset",
-        action="append",
-        type=_parse_dataset,
+        type=Path,
         required=True,
-        help="ALIAS=DISPLAY_NAME=PATH; repeat for multiple aliases",
+        help="path to one dbsliceAI dataset",
+    )
+    run.add_argument(
+        "--dataset-id",
+        help="override the ID derived from the dataset title",
     )
     run.add_argument("--reconnect-initial-ms", type=int, default=100)
     run.add_argument("--reconnect-max-ms", type=int, default=5000)
@@ -74,39 +89,52 @@ def _parser() -> argparse.ArgumentParser:
 
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     values = list(sys.argv[1:] if argv is None else argv)
-    if values and values[0] not in {"enroll", "run", "-h", "--help"}:
+    if values and values[0] not in {
+        "pair",
+        "download-sample",
+        "run",
+        "-h",
+        "--help",
+    }:
         values.insert(0, "run")
     return _parser().parse_args(values)
 
 
-def _enrollment_token(
-    environ: Mapping[str, str],
-    secret_reader: Callable[[str], str],
-) -> str:
-    token = environ.get("DBSLICE_CONNECTOR_ENROLLMENT_TOKEN")
-    if token is None:
-        token = secret_reader("Enrollment token: ")
-    if not token:
-        raise ValueError("Enrollment token must be non-empty")
-    return token
-
-
-def _enroll(
+def _pair(
     args: argparse.Namespace,
     *,
     environ: Mapping[str, str],
     stdout: TextIO,
-    secret_reader: Callable[[str], str],
+    browser_opener: Callable[[str], bool],
 ) -> None:
     credential_path = prepare_new_credentials_path(
         args.credentials_file or default_credentials_path(environ)
     )
     instance_id = args.connector_instance_id or generate_connector_instance_id()
-    result = enroll_connector(
+    pairing = start_pairing(
         server_url=args.server_url,
-        enrollment_token=_enrollment_token(environ, secret_reader),
         connector_instance_id=instance_id,
+        display_name=args.name,
     )
+    stdout.write(
+        json.dumps(
+            {
+                "event": "pairing_started",
+                "verificationUrl": pairing.verification_uri_complete,
+                "userCode": pairing.user_code,
+                "expiresAt": pairing.expires_at,
+            },
+            separators=(",", ":"),
+        )
+        + "\n"
+    )
+    stdout.flush()
+    if not args.no_open_browser:
+        try:
+            browser_opener(pairing.verification_uri_complete)
+        except webbrowser.Error:
+            pass
+    result = wait_for_pairing(pairing)
     write_new_credentials(
         credential_path,
         ConnectorCredentials(
@@ -119,7 +147,7 @@ def _enroll(
     stdout.write(
         json.dumps(
             {
-                "event": "enrolled",
+                "event": "paired",
                 "connectorId": result.connector_id,
                 "connectorInstanceId": result.connector_instance_id,
                 "credentialsFile": str(credential_path.expanduser()),
@@ -131,7 +159,14 @@ def _enroll(
 
 
 async def _run(args: argparse.Namespace, *, environ: Mapping[str, str]) -> None:
-    provider = FilesystemDatasetProvider(args.dataset)
+    provider = FilesystemDatasetProvider(
+        [
+            dataset_definition_from_root(
+                args.dataset,
+                dataset_id=args.dataset_id,
+            )
+        ]
+    )
     development_credential = environ.get("DBSLICE_CONNECTOR_CREDENTIAL")
     if development_credential:
         if args.credentials_file:
@@ -187,15 +222,25 @@ def main(
     *,
     environ: Mapping[str, str] = os.environ,
     stdout: TextIO = sys.stdout,
-    secret_reader: Callable[[str], str] = getpass.getpass,
+    browser_opener: Callable[[str], bool] = webbrowser.open,
 ) -> None:
     args = _parse_args(argv)
-    if args.command == "enroll":
-        _enroll(
+    if args.command == "pair":
+        _pair(
             args,
             environ=environ,
             stdout=stdout,
-            secret_reader=secret_reader,
+            browser_opener=browser_opener,
+        )
+        return
+    if args.command == "download-sample":
+        dataset_path = download_sample(args.destination)
+        stdout.write(
+            "Downloaded and verified the sample dataset:\n\n"
+            f"  {dataset_path}\n\n"
+            "Add it to the connector with:\n\n"
+            "  dbslice-ai-connector run --dataset "
+            f"{shlex.quote(str(dataset_path))}\n"
         )
         return
     asyncio.run(_run(args, environ=environ))
@@ -207,7 +252,7 @@ def cli(
     environ: Mapping[str, str] = os.environ,
     stdout: TextIO = sys.stdout,
     stderr: TextIO = sys.stderr,
-    secret_reader: Callable[[str], str] = getpass.getpass,
+    browser_opener: Callable[[str], bool] = webbrowser.open,
 ) -> int:
     """Run the command with concise, actionable operator-facing failures."""
 
@@ -216,7 +261,7 @@ def cli(
             argv,
             environ=environ,
             stdout=stdout,
-            secret_reader=secret_reader,
+            browser_opener=browser_opener,
         )
     except URLError as error:
         reason = error.reason

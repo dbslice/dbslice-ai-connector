@@ -9,6 +9,7 @@ from dbslice_ai_connector.dataset_provider import (
     DatasetDefinition,
     DatasetOperationError,
     FilesystemDatasetProvider,
+    dataset_definition_from_root,
 )
 from dbslice_ai_connector.protocol_validation import (
     load_protocol_schema,
@@ -174,6 +175,24 @@ class FilesystemDatasetProviderTest(unittest.TestCase):
                 {"itemId": "missing"},
             )
         self.assertEqual(context.exception.code, "NOT_FOUND")
+
+    def test_definition_is_derived_from_dataset_configuration(self) -> None:
+        definition = dataset_definition_from_root(Path(self.temp_dir.name))
+        self.assertEqual(definition.alias, "synthetic-latency-study")
+        self.assertEqual(definition.display_name, "Synthetic latency study")
+        self.assertEqual(definition.root, Path(self.temp_dir.name).resolve())
+
+    def test_definition_accepts_an_explicit_dataset_id(self) -> None:
+        definition = dataset_definition_from_root(
+            Path(self.temp_dir.name),
+            dataset_id="pilot-study",
+        )
+        self.assertEqual(definition.alias, "pilot-study")
+
+    def test_definition_requires_a_dataset_configuration(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "config/config.json"):
+                dataset_definition_from_root(Path(directory))
 
 
 if __name__ == "__main__":

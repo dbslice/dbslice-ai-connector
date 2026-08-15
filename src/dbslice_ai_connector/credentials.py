@@ -15,12 +15,12 @@ CREDENTIAL_FORMAT_VERSION = 1
 
 
 class CredentialFileExistsError(RuntimeError):
-    """Raised when enrollment would replace an existing connector identity."""
+    """Raised when pairing would replace an existing connector identity."""
 
 
 @dataclass(frozen=True)
 class ConnectorCredentials:
-    """The minimum persistent identity returned by connector enrollment."""
+    """The minimum persistent identity established by connector pairing."""
 
     server_origin: str
     connector_id: str
@@ -151,7 +151,7 @@ def _credentials_payload(credentials: ConnectorCredentials) -> dict[str, object]
 
 
 def prepare_new_credentials_path(path: Path) -> Path:
-    """Validate and prepare a private destination before remote enrollment."""
+    """Validate and prepare a private destination before remote pairing."""
 
     path = path.expanduser()
     if credentials_file_exists(path):
