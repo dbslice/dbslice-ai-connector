@@ -18,6 +18,11 @@ dependencies = [
   "websockets>=14,<16"
 ]
 
+[project.urls]
+Homepage = "https://github.com/dbslice/dbslice-ai-connector"
+Repository = "https://github.com/dbslice/dbslice-ai-connector"
+Issues = "https://github.com/dbslice/dbslice-ai-connector/issues"
+
 [project.scripts]
 dbslice-ai-connector = "dbslice_ai_connector.__main__:cli"
 
