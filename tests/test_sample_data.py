@@ -106,7 +106,7 @@ class SampleDataDownloadTest(unittest.TestCase):
 
     def test_cli_prints_the_normal_run_command(self) -> None:
         stdout = io.StringIO()
-        path = Path("/tmp/datasets/dbslice-ai-sample-data-1.0.0")
+        path = Path("/tmp/datasets/dbslice-ai-sample-data-1.1.0")
         with patch(
             "dbslice_ai_connector.__main__.download_sample",
             return_value=path,

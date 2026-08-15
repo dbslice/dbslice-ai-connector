@@ -11,11 +11,31 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import rfc8785
 
 MAX_DECODED_PAYLOAD_BYTES = 16 * 1024 * 1024
 DATASET_ALIAS_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
+PUBLIC_CURATED_REFERENCE_FIELDS = {
+    "paperId",
+    "title",
+    "authors",
+    "year",
+    "venue",
+    "doi",
+    "url",
+    "contentType",
+    "rights",
+    "summary",
+    "summaryBrief",
+    "summaryExtended",
+    "keyFindings",
+    "figures",
+    "citations",
+    "tags",
+    "summaryData",
+}
 
 
 class DatasetOperationError(RuntimeError):
@@ -155,6 +175,41 @@ def _public_extract(extract: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _non_empty_string(value: Any, field_name: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise DatasetOperationError(
+            "INVALID_REQUEST",
+            f"Curated reference {field_name} must be a non-empty string",
+        )
+    return value.strip()
+
+
+def _public_curated_reference(reference: Any) -> dict[str, Any]:
+    if not isinstance(reference, dict):
+        raise DatasetOperationError(
+            "INVALID_REQUEST",
+            "Every curated reference must be an object",
+        )
+    paper_id = _non_empty_string(reference.get("paperId"), "paperId")
+    title = _non_empty_string(reference.get("title"), f"{paper_id}.title")
+    url = _non_empty_string(reference.get("url"), f"{paper_id}.url")
+    parsed_url = urlparse(url)
+    if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+        raise DatasetOperationError(
+            "INVALID_REQUEST",
+            f"Curated reference {paper_id}.url must use HTTP or HTTPS",
+        )
+    public = {
+        key: reference[key]
+        for key in PUBLIC_CURATED_REFERENCE_FIELDS
+        if key in reference
+    }
+    public["paperId"] = paper_id
+    public["title"] = title
+    public["url"] = url
+    return public
+
+
 class FilesystemDatasetProvider:
     """Serve configured aliases without exposing connector-local paths."""
 
@@ -167,7 +222,7 @@ class FilesystemDatasetProvider:
         advertisements = []
         for dataset in self.datasets.values():
             config = self._load_raw_config(dataset)
-            public_config = self._public_config(config)
+            public_config = self._public_config(dataset, config)
             content = _canonical_json_bytes(public_config)
             advertisements.append(
                 {
@@ -188,7 +243,7 @@ class FilesystemDatasetProvider:
             )
 
         if operation == "getDatasetConfig":
-            return self._public_config(self._load_raw_config(dataset))
+            return self._public_config(dataset, self._load_raw_config(dataset))
         if operation == "getItems":
             return self._load_items(dataset)
         if operation == "getItemById":
@@ -206,7 +261,11 @@ class FilesystemDatasetProvider:
         config_path = self._contained_file(dataset.root, "config/config.json")
         return self._read_json(config_path)
 
-    def _public_config(self, config: dict[str, Any]) -> dict[str, Any]:
+    def _public_config(
+        self,
+        dataset: DatasetDefinition,
+        config: dict[str, Any],
+    ) -> dict[str, Any]:
         metadata = config.get("metaData")
         metadata_config = metadata.get("config") if isinstance(metadata, dict) else None
         extracts = config.get("extracts")
@@ -219,11 +278,45 @@ class FilesystemDatasetProvider:
                 "INVALID_REQUEST",
                 "Dataset configuration is missing dataset, metaData.config, or extracts",
             )
+        public_dataset = dict(config["dataset"])
+        public_dataset.pop("curatedReferences", None)
+        curated_references = self._load_curated_references(dataset, config)
+        if curated_references is not None:
+            public_dataset["curatedReferences"] = curated_references
         return {
-            "dataset": config["dataset"],
+            "dataset": public_dataset,
             "metaData": {"config": metadata_config},
             "extracts": [_public_extract(extract) for extract in extracts],
         }
+
+    def _load_curated_references(
+        self,
+        dataset: DatasetDefinition,
+        config: dict[str, Any],
+    ) -> list[dict[str, Any]] | None:
+        declaration = config.get("curatedReferences")
+        if declaration is None:
+            return None
+        if not isinstance(declaration, dict):
+            raise DatasetOperationError(
+                "INVALID_REQUEST",
+                "curatedReferences must be an object containing path",
+            )
+        manifest_path = self._contained_file(dataset.root, declaration.get("path"))
+        manifest = self._read_json_value(manifest_path)
+        if not isinstance(manifest, list):
+            raise DatasetOperationError(
+                "INVALID_REQUEST",
+                "Curated reference manifest must contain an array",
+            )
+        references = [_public_curated_reference(entry) for entry in manifest]
+        paper_ids = [reference["paperId"] for reference in references]
+        if len(set(paper_ids)) != len(paper_ids):
+            raise DatasetOperationError(
+                "INVALID_REQUEST",
+                "Curated reference paperId values must be unique",
+            )
+        return references
 
     def _load_items(self, dataset: DatasetDefinition) -> list[dict[str, Any]]:
         config = self._load_raw_config(dataset)
@@ -420,7 +513,7 @@ class FilesystemDatasetProvider:
         return candidate
 
     @staticmethod
-    def _read_json(path: Path) -> dict[str, Any]:
+    def _read_json_value(path: Path) -> Any:
         try:
             value = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -428,6 +521,11 @@ class FilesystemDatasetProvider:
                 "INVALID_REQUEST",
                 f"Could not read JSON dataset file: {path.name}",
             ) from error
+        return value
+
+    @classmethod
+    def _read_json(cls, path: Path) -> dict[str, Any]:
+        value = cls._read_json_value(path)
         if not isinstance(value, dict):
             raise DatasetOperationError(
                 "INVALID_REQUEST",

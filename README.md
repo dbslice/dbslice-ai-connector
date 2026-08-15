@@ -56,7 +56,7 @@ Connect the downloaded dataset in exactly the same way as any other dataset:
 
 ```bash
 dbslice-ai-connector run \
-  --dataset ~/datasets/dbslice-ai-sample-data-1.0.0
+  --dataset ~/datasets/dbslice-ai-sample-data-1.1.0
 ```
 
 Leave the connector running while you use the dataset in dbsliceAI. Stop it
@@ -71,7 +71,9 @@ dbslice-ai-connector run --dataset /absolute/path/to/dataset
 ```
 
 The dataset title is read from its configuration. The connector automatically
-reconnects after temporary network interruptions.
+reconnects after temporary network interruptions. If the dataset declares a
+linked curated-reference manifest, its citations, summaries and web links are
+made available automatically. Local paths and documents are never shared.
 
 The complete directory format is described in the
 [dbsliceAI dataset specification](https://github.com/dbslice/dbslice-ai-sample-data/blob/main/DATASET_FORMAT.md).

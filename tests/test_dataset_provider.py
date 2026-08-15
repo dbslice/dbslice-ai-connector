@@ -31,6 +31,9 @@ class FilesystemDatasetProviderTest(unittest.TestCase):
         root = Path(self.temp_dir.name)
         config = {
             "dataset": {"title": "Synthetic latency study"},
+            "curatedReferences": {
+                "path": "curated_references/papers.json",
+            },
             "metaData": {
                 "path": "data/metadata/items.json",
                 "config": {
@@ -73,6 +76,21 @@ class FilesystemDatasetProviderTest(unittest.TestCase):
             {"itemId": "case-002", "angle": 14},
         ]
         write_json(root / "config" / "config.json", config)
+        write_json(
+            root / "curated_references" / "papers.json",
+            [
+                {
+                    "paperId": "synthetic-reference",
+                    "title": "Synthetic reference",
+                    "authors": ["A. Researcher"],
+                    "year": 2025,
+                    "url": "https://repository.example.test/items/reference",
+                    "contentType": "text/html",
+                    "summary": "A reference curated for the synthetic dataset.",
+                    "localPath": "/Users/example/private/reference.pdf",
+                }
+            ],
+        )
         write_json(root / "data" / "metadata" / "items.json", {"items": self.items})
         write_json(
             root / "data" / "extracts" / "profile" / "case-001.json",
@@ -112,6 +130,22 @@ class FilesystemDatasetProviderTest(unittest.TestCase):
     def test_all_five_operations_and_wire_payloads(self) -> None:
         config = self.provider.execute("synthetic-study", "getDatasetConfig", {})
         self.assertEqual(config["dataset"]["title"], "Synthetic latency study")
+        self.assertEqual(
+            config["dataset"]["curatedReferences"],
+            [
+                {
+                    "paperId": "synthetic-reference",
+                    "title": "Synthetic reference",
+                    "authors": ["A. Researcher"],
+                    "year": 2025,
+                    "url": "https://repository.example.test/items/reference",
+                    "contentType": "text/html",
+                    "summary": "A reference curated for the synthetic dataset.",
+                }
+            ],
+        )
+        self.assertNotIn("curatedReferences", config["metaData"])
+        self.assertNotIn("localPath", config["dataset"]["curatedReferences"][0])
         self.assertNotIn("path", config["metaData"])
         self.assertNotIn("path", config["extracts"][0])
         self.assertNotIn("path", config["extracts"][0]["embedding"])
@@ -193,6 +227,38 @@ class FilesystemDatasetProviderTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(ValueError, "config/config.json"):
                 dataset_definition_from_root(Path(directory))
+
+    def test_curated_reference_manifest_must_stay_inside_dataset(self) -> None:
+        root = Path(self.temp_dir.name)
+        config_path = root / "config" / "config.json"
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        config["curatedReferences"]["path"] = "../outside.json"
+        write_json(config_path, config)
+
+        with self.assertRaisesRegex(
+            DatasetOperationError,
+            "outside its configured root",
+        ):
+            self.provider.execute("synthetic-study", "getDatasetConfig", {})
+
+    def test_curated_reference_requires_a_public_http_url(self) -> None:
+        root = Path(self.temp_dir.name)
+        write_json(
+            root / "curated_references" / "papers.json",
+            [
+                {
+                    "paperId": "private-reference",
+                    "title": "Private reference",
+                    "url": "file:///Users/example/private/reference.pdf",
+                }
+            ],
+        )
+
+        with self.assertRaisesRegex(
+            DatasetOperationError,
+            "must use HTTP or HTTPS",
+        ):
+            self.provider.execute("synthetic-study", "getDatasetConfig", {})
 
 
 if __name__ == "__main__":

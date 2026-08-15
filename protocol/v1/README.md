@@ -26,6 +26,12 @@ This directory is the authoritative connector wire contract.
 - heartbeat ping/pong
 - operation cancellation and cancellation results
 
+Public dataset metadata may include `dataset.curatedReferences`. The connector
+loads those entries from the dataset's private manifest declaration before
+returning `getDatasetConfig`; manifest paths and local documents never cross the
+wire. This uses the existing JSON-valued `dataset` object and does not add a
+protocol operation.
+
 The authenticated WebSocket supplies the connector identity. User ownership
 is resolved by the hosted service and never crosses the wire in messages.
 
