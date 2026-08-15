@@ -2,7 +2,7 @@
 
 Make a dataset on your computer available in dbsliceAI.
 
-[Website](https://ai.dbslice.org/)
+Learn more at the [dbsliceAI website](https://ai.dbslice.org/).
 
 The connector reads only the dataset directory you select and makes an
 outbound connection to dbsliceAI. You do not need to open an inbound port or
