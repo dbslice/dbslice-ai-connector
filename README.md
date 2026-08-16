@@ -18,6 +18,39 @@ service URL. Accept the invitation before following the steps below.
 After your account is ready, you pair each computer yourself. The administrator
 does not need to create a connector or send you a connector-specific secret.
 
+## Connect your MCP client
+
+Ask your dbsliceAI administrator for the hosted MCP server URL. The examples
+below use `https://app.ai.dbslice.org/mcp`; replace it with the URL you were
+given.
+
+### Claude
+
+Add dbsliceAI as a **custom connector**:
+
+1. Open **Settings → Connectors**.
+2. Select **Add custom connector**.
+3. Name it `dbsliceAI` and enter the hosted MCP server URL.
+4. Connect and sign in with your invited account.
+
+### ChatGPT
+
+Add dbsliceAI as a **custom plugin**:
+
+1. Open **Settings → Security and login** and enable **Developer mode**.
+2. Open **Plugins** and select **+**.
+3. Name the custom plugin `dbsliceAI` and enter the hosted MCP server URL.
+4. Connect and sign in with your invited account.
+5. Start a new chat with the custom plugin enabled.
+
+Once connected, try this prompt:
+
+> Teach me how to use the dbsliceAI tools. Use an available dataset to give a
+> short example of each tool, including useful plots.
+
+You can begin with datasets already provided by the hosted service. To make a
+dataset on your own computer available, install and run the connector below.
+
 ## Install
 
 The connector requires Python 3.11 or newer. Install it from PyPI:
