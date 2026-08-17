@@ -20,9 +20,9 @@ does not need to create a connector or send you a connector-specific secret.
 
 ## Connect your MCP client
 
-Ask your dbsliceAI administrator for the hosted MCP server URL. The examples
-below use `https://app.ai.dbslice.org/mcp`; replace it with the URL you were
-given.
+You will need to give your MCP client the URL of the dbsliceAI MCP server. The
+examples below use `https://app.ai.dbslice.org`, but use a different one if
+your administrator has specified it.
 
 ### Claude
 
@@ -30,7 +30,8 @@ Add dbsliceAI as a **custom connector**:
 
 1. Open **Settings → Connectors**.
 2. Select **Add custom connector**.
-3. Name it `dbsliceAI` and enter the hosted MCP server URL.
+3. Name it `dbsliceAI` and enter the hosted MCP server URL, for example
+   `https://app.ai.dbslice.org/mcp`.
 4. Connect and sign in with your invited account.
 
 ### ChatGPT
@@ -39,7 +40,8 @@ Add dbsliceAI as a **custom plugin**:
 
 1. Open **Settings → Security and login** and enable **Developer mode**.
 2. Open **Plugins** and select **+**.
-3. Name the custom plugin `dbsliceAI` and enter the hosted MCP server URL.
+3. Name the custom plugin `dbsliceAI` and enter the hosted MCP server URL, for
+   example `https://app.ai.dbslice.org/mcp`.
 4. Connect and sign in with your invited account.
 5. Start a new chat with the custom plugin enabled.
 
