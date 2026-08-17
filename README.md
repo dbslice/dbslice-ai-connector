@@ -34,6 +34,25 @@ Add dbsliceAI as a **custom connector**:
    `https://app.ai.dbslice.org/mcp`.
 4. Connect and sign in with your invited account.
 
+### Claude Code
+
+Add dbsliceAI to the current project, then start the OAuth login:
+
+```bash
+claude mcp add --transport http dbsliceAI https://app.ai.dbslice.org/mcp
+claude mcp login dbsliceAI
+```
+
+If `claude mcp login` is unavailable, update Claude Code or start an
+interactive `claude` session, enter `/mcp`, select `dbsliceAI` and follow the
+browser login flow.
+
+Use `claude mcp list` to verify the connection. Run local-scope commands from
+the project directory where you want dbsliceAI to be available.
+
+See the [Claude Code MCP documentation](https://code.claude.com/docs/en/mcp)
+for installation scopes and OAuth commands.
+
 ### ChatGPT
 
 Add dbsliceAI as a **custom plugin**:
@@ -45,6 +64,38 @@ Add dbsliceAI as a **custom plugin**:
 4. Connect and sign in with your invited account.
 5. Start a new chat with the custom plugin enabled.
 
+### Codex CLI
+
+dbsliceAI uses Client ID Metadata Documents (CIMD) for Codex authorization.
+Use a Codex CLI version whose `codex mcp add --help` output includes
+`--oauth-client-registration`; this flow has been verified with
+`codex-cli 0.148.0-alpha.9`.
+
+If necessary, install this version:
+
+```bash
+npm install -g @openai/codex@0.148.0-alpha.9
+```
+
+Add dbsliceAI and select CIMD explicitly:
+
+```bash
+codex mcp add dbsliceAI --url https://app.ai.dbslice.org/mcp --oauth-client-registration cimd
+```
+
+Use `codex mcp list` to verify the saved server. Start a new Codex session and
+enter `/mcp verbose` to inspect the connection and available tools. See the
+[Codex command reference](https://learn.chatgpt.com/docs/developer-commands#codex-mcp)
+for the current MCP management commands.
+
+### Other MCP clients
+
+dbsliceAI uses controlled OAuth client registration. If a CLI reports
+`Unknown client`, send the exact OAuth `client_id` or CIMD URL shown in the
+error to the dbsliceAI administrator. Each distinct client application must
+be approved once; individual users and installations do not require separate
+client registrations.
+
 Once connected, try this prompt:
 
 > Teach me how to use the dbsliceAI tools. Use an available dataset to give a
@@ -53,7 +104,7 @@ Once connected, try this prompt:
 You can begin with datasets already provided by the hosted service. To make a
 dataset on your own computer available, install and run the connector below.
 
-## Install
+## Install the connector
 
 The connector requires Python 3.11 or newer. Install it from PyPI:
 
