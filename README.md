@@ -83,6 +83,12 @@ Add dbsliceAI and select CIMD explicitly:
 codex mcp add dbsliceAI --url https://app.ai.dbslice.org/mcp --oauth-client-registration cimd
 ```
 
+Authenticate with the scopes required by dbsliceAI:
+
+```bash
+codex mcp login dbsliceAI --scopes openid,profile,email,offline_access,mcp:use --oauth-client-registration cimd
+```
+
 Use `codex mcp list` to verify the saved server. Start a new Codex session and
 enter `/mcp verbose` to inspect the connection and available tools. See the
 [Codex command reference](https://learn.chatgpt.com/docs/developer-commands#codex-mcp)
