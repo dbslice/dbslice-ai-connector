@@ -1,13 +1,13 @@
 # dbsliceAI connector
 
-Make a dataset on your computer available in dbsliceAI.
+The dbsliceAI connector is the open-source local data connector for
+[dbsliceAI](https://ai.dbslice.org/), an MCP-based system for controlled,
+AI-assisted exploration of engineering simulation databases.
 
-Learn more at the [dbsliceAI website](https://ai.dbslice.org/).
-
-The connector reads only the dataset directory you select and makes an
-outbound connection to dbsliceAI. You do not need to open an inbound port or
-run a public file server, and local file paths are not shared with dbsliceAI
-clients.
+It makes a selected dataset on your computer available to an authorised
+hosted dbsliceAI service without opening an inbound port or running a public
+file server. The connector reads only the dataset directory you select, and
+local file paths are not shared with dbsliceAI clients.
 
 ## Before you begin
 
