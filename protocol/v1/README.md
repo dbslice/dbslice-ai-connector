@@ -32,6 +32,11 @@ returning `getDatasetConfig`; manifest paths and local documents never cross the
 wire. This uses the existing JSON-valued `dataset` object and does not add a
 protocol operation.
 
+Standalone extracts may use `type: "embedding"`, with a file-backed embedding
+declaration and `settings.shape`. The existing `readExtractPayload` operation
+with `kind: "embedding"` supplies their N-dimensional cells. Empty cells use
+`avg: null`; filesystem paths remain private to the connector.
+
 The authenticated WebSocket supplies the connector identity. User ownership
 is resolved by the hosted service and never crosses the wire in messages.
 

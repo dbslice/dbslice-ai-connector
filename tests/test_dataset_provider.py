@@ -201,6 +201,40 @@ class FilesystemDatasetProviderTest(unittest.TestCase):
                 schema=SCHEMA,
             )
 
+    def test_standalone_3d_embedding_without_visual_path(self) -> None:
+        root = Path(self.temp_dir.name)
+        config_path = root / "config" / "config.json"
+        config = json.loads(config_path.read_text())
+        config["extracts"].append({
+            "extractId": "volume", "type": "embedding", "description": "Volume",
+            "embedding": {"type": "cells", "source": "file",
+                          "path": "volume/${itemId}.json", "settings": {"shape": [1, 1, 2]}}
+        })
+        write_json(config_path, config)
+        data = {"shape": [1, 1, 2], "cells": [
+            {"index": [0, 0, 0], "avg": 0}, {"index": [0, 0, 1], "avg": None}
+        ]}
+        write_json(root / "volume" / "case-001.json", data)
+        public = self.provider.execute("synthetic-study", "getDatasetConfig", {})
+        extract = public["extracts"][-1]
+        self.assertEqual(extract["type"], "embedding")
+        self.assertNotIn("path", extract)
+        self.assertNotIn("path", extract["embedding"])
+        validate_protocol_message({
+            "protocolVersion": "1", "messageType": "operation.success", "requestId": "req_volumeconfig",
+            "operation": "getDatasetConfig", "ok": True, "result": public
+        }, schema=SCHEMA)
+        result = self.provider.execute("synthetic-study", "readExtractPayload", {
+            "itemId": "case-001", "extractId": "volume", "kind": "embedding"
+        })
+        self.assertEqual(result["kind"], "embedding")
+        self.assertEqual(result["data"]["shape"], data["shape"])
+        self.assertEqual(result["data"]["cells"], data["cells"])
+        validate_protocol_message({
+            "protocolVersion": "1", "messageType": "operation.success", "requestId": "req_volumepayload",
+            "operation": "readExtractPayload", "ok": True, "result": result
+        }, schema=SCHEMA)
+
     def test_missing_item_maps_to_not_found(self) -> None:
         with self.assertRaises(DatasetOperationError) as context:
             self.provider.execute(

@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.success",
+  "requestId": "req_embed001",
+  "operation": "readExtractPayload",
+  "ok": true,
+  "result": {
+    "kind": "embedding",
+    "contentType": "application/json",
+    "encoding": "json",
+    "data": {
+      "type": "cells",
+      "shape": [
+        1,
+        1,
+        2
+      ],
+      "cells": [
+        {
+          "index": [
+            0,
+            0,
+            0
+          ],
+          "avg": 0
+        },
+        {
+          "index": [
+            0,
+            0,
+            1
+          ],
+          "avg": null
+        }
+      ]
+    },
+    "encodedSizeBytes": 97,
+    "fingerprint": {
+      "algorithm": "sha256",
+      "value": "b31ba095fbc8fca6c28414c8ace14cf759d33909fc010e56892d78a5fa06f4ac"
+    }
+  }
+}

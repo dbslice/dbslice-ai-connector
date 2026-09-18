@@ -78,7 +78,7 @@
       "properties": {
         "extractId": { "$ref": "#/$defs/logicalId" },
         "type": {
-          "enum": ["image", "line", "glb"]
+          "enum": ["image", "line", "glb", "embedding"]
         },
         "description": {
           "type": "string",
@@ -147,7 +147,52 @@
           "additionalProperties": { "$ref": "#/$defs/jsonValue" }
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "embedding"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "embedding"
+            ],
+            "properties": {
+              "embedding": {
+                "required": [
+                  "settings"
+                ],
+                "properties": {
+                  "source": {
+                    "const": "file"
+                  },
+                  "settings": {
+                    "required": [
+                      "shape"
+                    ],
+                    "properties": {
+                      "shape": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        }
+      ]
     },
     "datasetConfig": {
       "type": "object",
@@ -210,7 +255,7 @@
             "minimum": 0
           }
         },
-        "avg": { "type": "number" },
+        "avg": { "type": ["number", "null"] },
         "label": {
           "type": "string",
           "maxLength": 512

@@ -1,0 +1,28 @@
+{
+  "protocolVersion": "1",
+  "messageType": "operation.success",
+  "requestId": "req_config01",
+  "operation": "getDatasetConfig",
+  "ok": true,
+  "result": {
+    "dataset": {
+      "title": "Synthetic latency study",
+      "context": {
+        "summary": "Non-confidential connector protocol fixture"
+      }
+    },
+    "metaData": {
+      "config": {
+        "title": "Synthetic latency study",
+        "description": "Metadata fixture"
+      }
+    },
+    "extracts": [
+      {
+        "extractId": "Yp-3d",
+        "type": "embedding",
+        "description": "Logical 3D cell array"
+      }
+    ]
+  }
+}
