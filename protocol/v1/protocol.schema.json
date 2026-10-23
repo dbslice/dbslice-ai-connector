@@ -245,7 +245,7 @@
     },
     "embeddingCell": {
       "type": "object",
-      "required": ["index", "avg"],
+      "required": ["avg"],
       "properties": {
         "index": {
           "type": "array",
@@ -423,6 +423,10 @@
               "items": { "$ref": "#/$defs/embeddingCell" }
             }
           },
+          "allOf": [{
+            "if": { "properties": { "shape": { "type": "array", "minItems": 2 } } },
+            "then": { "properties": { "cells": { "type": "array", "items": { "type": "object", "properties": { "index": {} }, "required": ["index"] } } } }
+          }],
           "additionalProperties": false
         },
         "encodedSizeBytes": {

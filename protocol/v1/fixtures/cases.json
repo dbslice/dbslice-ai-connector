@@ -1,5 +1,9 @@
 {
   "cases": [
+    {"file": "valid/read-1d-positional-embedding-success.json", "valid": true},
+    {"file": "invalid/read-2d-missing-index.json", "valid": false},
+    {"file": "invalid/read-1d-null-index.json", "valid": false},
+    {"file": "valid/get-physical-embedding-config-success.json", "valid": true},
     { "file": "valid/session-hello.json", "valid": true },
     { "file": "valid/session-accepted.json", "valid": true },
     { "file": "valid/dataset-advertisement.json", "valid": true },
